@@ -1,0 +1,55 @@
+# iOS build pipeline via Codemagic (BLUEPRINT.md §2.4): free tier gives native Apple-silicon
+# macOS runners without buying a Mac or burning GitHub Actions' 10x-cost macOS minutes.
+#
+# Setup required before this runs (see README.md §Setup):
+#   1. Connect this repo in the Codemagic dashboard.
+#   2. Add an iOS code signing identity (Codemagic can auto-manage this via App Store Connect API key).
+#   3. Set environment group `ios_credentials` with APP_STORE_CONNECT_* variables.
+#   4. Apple Developer Program enrollment must be as an ORGANIZATION, not an individual —
+#      required for health-category apps per Guideline 5.1.1(ix), see BLUEPRINT.md §2.4/§5.
+
+workflows:
+  ios-release:
+    name: iOS Release Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    environment:
+      groups:
+        - ios_credentials
+      vars:
+        BUNDLE_ID: "com.yourcompany.healthcareplatform" # placeholder — replace before first build
+      flutter: stable
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Set up code signing
+        script: keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Build ipa
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_API_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true

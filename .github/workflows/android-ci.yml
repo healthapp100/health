@@ -1,0 +1,40 @@
+# Android CI — lint, analyze, test, and build a debug APK on every push/PR.
+# Uses GitHub Actions' 1x-cost Linux runner (not macOS) per BLUEPRINT.md §2.4 —
+# iOS builds are intentionally routed to Codemagic (see codemagic.yaml) instead of this runner.
+#
+# Activates once `apps/mobile` exists (run `flutter create` there per README.md §Setup).
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**"]
+  pull_request:
+    paths: ["apps/mobile/**"]
+
+defaults:
+  run:
+    working-directory: apps/mobile
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --coverage
+
+      - name: Build debug APK
+        run: flutter build apk --debug

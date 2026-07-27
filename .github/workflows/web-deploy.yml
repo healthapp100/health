@@ -1,0 +1,39 @@
+# Builds the Flutter Web app and deploys it to Cloudflare Pages (BLUEPRINT.md §2.4:
+# chosen for unlimited free bandwidth + strongest India edge presence of the options researched).
+#
+# Requires repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (set these once a
+# Cloudflare Pages project exists — see README.md §Setup). Activates once `apps/mobile` exists.
+name: Web Deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**"]
+
+defaults:
+  run:
+    working-directory: apps/mobile
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web release
+        run: flutter build web --release
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/mobile/build/web --project-name=healthcare-platform

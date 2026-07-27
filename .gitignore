@@ -1,0 +1,38 @@
+# Flutter/Dart
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/.pub-cache/
+apps/mobile/.pub/
+apps/mobile/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+apps/mobile/ios/Flutter/Flutter.podspec
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/*.iml
+apps/mobile/.idea/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+GoogleService-Info.plist
+google-services.json
+
+# Supabase local dev
+supabase/.branches/
+supabase/.temp/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

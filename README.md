@@ -8,7 +8,12 @@ first if you haven't.
 ## Repository layout
 
 ```
-apps/mobile/         Flutter app (iOS + Android + Web) — not yet scaffolded, see Setup below
+apps/mobile/         Flutter app (iOS + Android + Web)
+  pubspec.yaml         Hand-authored ahead of `flutter create` — dependency choices reasoned
+                       out inline (Riverpod, go_router, Supabase, health, etc.)
+  ARCHITECTURE.md      lib/ folder structure, navigation shell, state-management convention —
+                       written so real code can start the moment platform folders exist
+  .env.example         Copy to .env and fill in your Supabase URL/anon key (gitignored)
 supabase/
   migrations/         SQL migrations: roles/profiles, RLS policies, care-delivery tables,
                        vitals/labs, consent/audit, content library (Health Knowledge Library,
@@ -29,7 +34,13 @@ codemagic.yaml         iOS build/signing/TestFlight pipeline (Codemagic — see 
 **Already done (this session):** git repo initialized, Supabase CLI project initialized
 (`supabase/config.toml`), 7 SQL migrations covering the full Phase 0/1/2 schema with row-level
 security for every planned role (patient/doctor/nutritionist/lab_staff/support/admin/super_admin),
-CI/CD workflow files, DPDP-aligned privacy notice and consent-flow drafts.
+CI/CD workflow files, DPDP-aligned privacy notice and consent-flow drafts, and `apps/mobile`'s
+`pubspec.yaml` + `ARCHITECTURE.md` pre-written so real Dart code can start immediately once
+`flutter create` backfills the platform folders.
+
+Two things remain that only you can do — both are outside what I'm able to do on your behalf:
+installing the Flutter SDK on this machine, and creating your own hosted Supabase project
+(requires your own account login). Everything else keeps moving without either.
 
 **You need Flutter installed to continue.** Install the Flutter SDK
 (https://docs.flutter.dev/get-started/install/windows), then run `flutter doctor` and resolve

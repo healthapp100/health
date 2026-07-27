@@ -1,0 +1,70 @@
+name: healthcare_platform
+description: "India-first healthcare platform — patient app (BLUEPRINT.md)."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+# This file is hand-authored ahead of `flutter create` (see README.md §Setup). Once Flutter is
+# installed, run:
+#   flutter create --org com.yourcompany --project-name healthcare_platform \
+#     --platforms=android,ios,web apps/mobile
+# from the repo root — it detects this existing pubspec.yaml/lib and only backfills the missing
+# android/, ios/, web/ platform folders. Do not let it overwrite this file.
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend: Supabase client (Postgres + Auth + Storage + Realtime + Edge Functions) — BLUEPRINT.md §2.2
+  supabase_flutter: ^2.6.0
+
+  # Routing: go_router chosen over Navigator 2.0 boilerplate or auto_route for its declarative,
+  # URL-based routing (works identically on Flutter Web, matters since web is a first-class
+  # target here) and built-in support for nested/shell routes, which the bottom-nav IA from
+  # BLUEPRINT.md §4.4 (Home / Care Team & Calls / Learn / Track / Profile) needs directly.
+  go_router: ^14.2.0
+
+  # State management: Riverpod chosen over Provider/Bloc for compile-time-safe DI, first-class
+  # async/stream support (Supabase realtime subscriptions map directly onto StreamProvider), and
+  # straightforward unit-testability without a BuildContext — valuable for a solo dev who has to
+  # maintain this alone.
+  flutter_riverpod: ^2.5.0
+
+  # Health data: Apple HealthKit + Android Health Connect (Google Fit's API is deprecated/closed
+  # to new signups since May 2024 — Health Connect is the only forward-compatible Android path).
+  # BLUEPRINT.md §2.1.
+  health: ^11.1.0
+
+  # Push notifications (appointment reminders, monitoring-call reminders, medicine reminders)
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^18.0.0
+
+  # Offline-first local store + sync queue for patchy-connectivity resilience — BLUEPRINT.md §2.1
+  sqflite: ^2.3.3
+  connectivity_plus: ^6.0.5
+
+  # Vitals trend charts (blood glucose, BP, weight over time)
+  fl_chart: ^0.69.0
+
+  # Prescription/lab-report capture
+  image_picker: ^1.1.2
+
+  # Formatting (dates, tabular numeric display for lab values per BLUEPRINT.md §4.4)
+  intl: ^0.19.0
+
+  # Environment config (SUPABASE_URL / SUPABASE_ANON_KEY) without committing secrets
+  flutter_dotenv: ^5.2.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env

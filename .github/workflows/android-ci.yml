@@ -30,6 +30,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # .env is gitignored (real Supabase credentials never live in the repo) but pubspec.yaml
+      # declares it as a required asset, so CI needs a placeholder present to analyze/build.
+      - name: Create placeholder .env
+        run: cp .env.example .env
+
       - name: Static analysis
         run: flutter analyze
 

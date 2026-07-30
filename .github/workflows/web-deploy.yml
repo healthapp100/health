@@ -28,6 +28,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Same reasoning as android-ci.yml: .env is gitignored, pubspec.yaml requires it as an
+      # asset. TODO once real Supabase credentials exist: replace this with a step that writes
+      # secrets.SUPABASE_URL / secrets.SUPABASE_ANON_KEY instead, so the deployed web build
+      # actually works end-to-end rather than just compiling.
+      - name: Create placeholder .env
+        run: cp .env.example .env
+
       - name: Build web release
         run: flutter build web --release
 

@@ -31,10 +31,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # .env is gitignored (real Supabase credentials never live in the repo) but pubspec.yaml
-      # declares it as a required asset, so CI needs a placeholder present to analyze/build.
-      - name: Create placeholder .env
-        run: cp .env.example .env
+      # .env is gitignored (real credentials never live in the repo) but pubspec.yaml declares
+      # it as a required asset — write the real values from repo secrets so the debug APK
+      # actually authenticates against Supabase, not just compiles.
+      - name: Write .env from secrets
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
 
       - name: Static analysis
         run: flutter analyze

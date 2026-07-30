@@ -8,9 +8,10 @@ name: Android CI
 on:
   push:
     branches: [main]
-    paths: ["apps/mobile/**"]
+    paths: ["apps/mobile/**", ".github/workflows/android-ci.yml"]
   pull_request:
-    paths: ["apps/mobile/**"]
+    paths: ["apps/mobile/**", ".github/workflows/android-ci.yml"]
+  workflow_dispatch:
 
 defaults:
   run:

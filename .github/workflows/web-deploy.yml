@@ -8,7 +8,8 @@ name: Web Deploy
 on:
   push:
     branches: [main]
-    paths: ["apps/mobile/**"]
+    paths: ["apps/mobile/**", ".github/workflows/web-deploy.yml"]
+  workflow_dispatch:
 
 defaults:
   run:

@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mobile-web",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set PATH=%PATH%;D:\\src\\flutter\\bin && cd apps\\mobile && flutter run -d web-server --web-port=5050 --web-hostname=127.0.0.1"
+      ],
+      "port": 5050
+    }
+  ]
+}

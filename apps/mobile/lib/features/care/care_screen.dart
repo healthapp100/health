@@ -37,15 +37,21 @@ class _CareScreenState extends ConsumerState<CareScreen> with SingleTickerProvid
     return Scaffold(
       appBar: AppBar(
         title: const Text('Care'),
-        bottom: TabBar(controller: _tabController, tabs: const [
-          Tab(text: 'My calls'),
-          Tab(text: 'Find a doctor'),
-        ]),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'My calls'),
+            Tab(text: 'Find a doctor'),
+          ],
+        ),
       ),
-      body: TabBarView(controller: _tabController, children: [
-        _MyCallsTab(),
-        _FindProviderTab(role: 'doctor'),
-      ]),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _MyCallsTab(),
+          const _FindProviderTab(role: 'doctor'),
+        ],
+      ),
     );
   }
 }
@@ -136,10 +142,13 @@ class _FindProviderTab extends ConsumerWidget {
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(provider.fullName),
-                    subtitle: Text([
-                      if (provider.specialty != null) provider.specialty!,
-                      if (provider.yearsExperience != null) '${provider.yearsExperience} yrs experience',
-                    ].join(' · ')),
+                    subtitle: Text(
+                      [
+                        if (provider.specialty != null) provider.specialty!,
+                        if (provider.yearsExperience != null)
+                          '${provider.yearsExperience} yrs experience',
+                      ].join(' · '),
+                    ),
                     trailing: FilledButton(
                       onPressed: () => showBookAppointmentSheet(context, ref, provider),
                       child: const Text('Book'),

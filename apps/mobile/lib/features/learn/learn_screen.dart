@@ -73,11 +73,13 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
                 selected: _selectedCategory == null,
                 onTap: () => setState(() => _selectedCategory = null),
               ),
-              ...categories.map((c) => _CategoryChip(
-                    label: c.replaceAll('_', ' '),
-                    selected: _selectedCategory == c,
-                    onTap: () => setState(() => _selectedCategory = c),
-                  )),
+              ...categories.map(
+                (c) => _CategoryChip(
+                  label: c.replaceAll('_', ' '),
+                  selected: _selectedCategory == c,
+                  onTap: () => setState(() => _selectedCategory = c),
+                ),
+              ),
             ],
           ),
         ),

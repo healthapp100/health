@@ -52,21 +52,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ScaffoldWithNav(shell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/care', builder: (context, state) => const CareScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/track', builder: (context, state) => const TrackScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/care', builder: (context, state) => const CareScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/track', builder: (context, state) => const TrackScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
+            ],
+          ),
         ],
       ),
       GoRoute(path: '/labs', builder: (context, state) => const LabsScreen()),

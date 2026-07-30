@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/enums.dart';
 import '../models/vital.dart';
 
 /// Health Data Monitoring (public.vitals). Plain-Postgres time-series per BLUEPRINT.md §2.2 —

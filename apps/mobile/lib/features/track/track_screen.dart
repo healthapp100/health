@@ -182,12 +182,14 @@ class _RemindersCard extends ConsumerWidget {
                 }
                 return Column(
                   children: reminders
-                      .map((r) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.medication_outlined),
-                            title: Text(r.medicineName),
-                            subtitle: Text(r.dosage ?? ''),
-                          ))
+                      .map(
+                        (r) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.medication_outlined),
+                          title: Text(r.medicineName),
+                          subtitle: Text(r.dosage ?? ''),
+                        ),
+                      )
                       .toList(),
                 );
               },

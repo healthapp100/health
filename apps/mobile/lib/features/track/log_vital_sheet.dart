@@ -79,7 +79,7 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
           Text('Log a reading', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _selectedMetric,
+            initialValue: _selectedMetric,
             decoration: const InputDecoration(labelText: 'Metric'),
             items: _metrics.entries
                 .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value.$1)))

@@ -50,10 +50,27 @@ class AuthService {
     return _client.auth.signInWithOAuth(OAuthProvider.google);
   }
 
-  /// Email + magic link — staff-side auth only (doctors/nutritionists/lab staff/admins),
-  /// per BLUEPRINT.md §2.3: avoids SMS cost for the non-patient-facing side of the platform.
-  Future<void> sendMagicLink(String email) {
+  /// Email OTP — available to any user, not just staff. Originally added for the staff-only
+  /// magic-link path (BLUEPRINT.md §2.3, avoids SMS cost for non-patient-facing auth); now also
+  /// used as the patient-facing login method until a DLT-registered SMS aggregator is set up for
+  /// phone OTP (that needs Indian telecom compliance work, tracked separately — see
+  /// PhoneEntryScreen). Whether this delivers a clickable link or a typed code depends on the
+  /// "Magic Link" email template configured in the Supabase dashboard, not this client code.
+  Future<void> sendEmailOtp(String email) {
     return _client.auth.signInWithOtp(email: email);
+  }
+
+  /// Verifies the code from [sendEmailOtp] when the dashboard's email template sends a token
+  /// (not a link) — mirrors [verifyPhoneOtp] but for the email/OtpType.email channel.
+  Future<AuthResponse> verifyEmailOtp({
+    required String email,
+    required String otp,
+  }) {
+    return _client.auth.verifyOTP(
+      email: email,
+      token: otp,
+      type: OtpType.email,
+    );
   }
 
   Future<void> signOut() => _client.auth.signOut();

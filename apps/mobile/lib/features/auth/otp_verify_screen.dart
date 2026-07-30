@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/service_providers.dart';
+import 'auth_contact.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
-  final String phoneE164;
-  const OtpVerifyScreen({super.key, required this.phoneE164});
+  final AuthContact contact;
+  const OtpVerifyScreen({super.key, required this.contact});
 
   @override
   ConsumerState<OtpVerifyScreen> createState() => _OtpVerifyScreenState();
@@ -33,10 +34,18 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
       _errorText = null;
     });
     try {
-      await ref.read(authServiceProvider).verifyPhoneOtp(
-            phoneE164: widget.phoneE164,
-            otp: _otpController.text.trim(),
-          );
+      final authService = ref.read(authServiceProvider);
+      if (widget.contact.isEmail) {
+        await authService.verifyEmailOtp(
+          email: widget.contact.value,
+          otp: _otpController.text.trim(),
+        );
+      } else {
+        await authService.verifyPhoneOtp(
+          phoneE164: widget.contact.value,
+          otp: _otpController.text.trim(),
+        );
+      }
       if (!mounted) return;
       // Screen 2/3 of docs/consent-flow-draft.md is required before the app is usable — a
       // brand-new user has no consent_records rows yet, so route them there first.
@@ -47,6 +56,15 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
       setState(() => _errorText = 'Incorrect or expired code. $e');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    final authService = ref.read(authServiceProvider);
+    if (widget.contact.isEmail) {
+      await authService.sendEmailOtp(widget.contact.value);
+    } else {
+      await authService.sendPhoneOtp(widget.contact.value);
     }
   }
 
@@ -63,7 +81,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
             children: [
               Text('Enter the code', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 8),
-              Text('Sent to ${widget.phoneE164}'),
+              Text('Sent to ${widget.contact.value}'),
               const SizedBox(height: 24),
               TextField(
                 controller: _otpController,
@@ -88,9 +106,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: _isSubmitting
-                    ? null
-                    : () => ref.read(authServiceProvider).sendPhoneOtp(widget.phoneE164),
+                onPressed: _isSubmitting ? null : _resend,
                 child: const Text('Resend code'),
               ),
             ],

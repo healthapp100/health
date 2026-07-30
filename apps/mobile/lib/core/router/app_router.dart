@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/auth_contact.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
 import '../../features/care/care_screen.dart';
@@ -41,7 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth/verify',
         builder: (context, state) => OtpVerifyScreen(
-          phoneE164: state.extra as String? ?? '',
+          contact: state.extra as AuthContact? ?? const AuthContact.phone(''),
         ),
       ),
       GoRoute(path: '/onboarding/consent', builder: (context, state) => const ConsentScreen()),

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/providers/service_providers.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/appointment.dart';
+import '../../models/enums.dart';
 import 'book_appointment_sheet.dart';
 import 'care_providers.dart';
 
@@ -23,7 +25,7 @@ class _CareScreenState extends ConsumerState<CareScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -42,6 +44,7 @@ class _CareScreenState extends ConsumerState<CareScreen> with SingleTickerProvid
           tabs: const [
             Tab(text: 'My calls'),
             Tab(text: 'Find a doctor'),
+            Tab(text: 'Find a nutritionist'),
           ],
         ),
       ),
@@ -50,6 +53,7 @@ class _CareScreenState extends ConsumerState<CareScreen> with SingleTickerProvid
         children: [
           _MyCallsTab(),
           const _FindProviderTab(role: 'doctor'),
+          const _FindProviderTab(role: 'nutritionist'),
         ],
       ),
     );
@@ -89,33 +93,86 @@ class _MyCallsTab extends ConsumerWidget {
   }
 }
 
-class _AppointmentTile extends StatelessWidget {
+// Only a call that hasn't already happened or been cancelled can be cancelled.
+bool _isCancellable(AppointmentStatus status) =>
+    status == AppointmentStatus.requested || status == AppointmentStatus.confirmed;
+
+Future<bool> _confirmCancel(BuildContext context, String title) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Cancel this call?'),
+      content: Text(title),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep it')),
+        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Cancel call')),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
+class _AppointmentTile extends ConsumerWidget {
   final Appointment appointment;
   const _AppointmentTile({required this.appointment});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label = DateFormat('EEE, d MMM · h:mm a').format(appointment.scheduledAt);
     return Card(
       child: ListTile(
         leading: Icon(appointment.mode.name == 'video' ? Icons.videocam_outlined : Icons.call_outlined),
-        title: Text(DateFormat('EEE, d MMM · h:mm a').format(appointment.scheduledAt)),
-        subtitle: Text(appointment.status.name),
+        title: Text(label),
+        subtitle: Text(appointment.status.wireValue),
+        trailing: _isCancellable(appointment.status)
+            ? IconButton(
+                icon: const Icon(Icons.cancel_outlined),
+                tooltip: 'Cancel',
+                onPressed: () async {
+                  if (!await _confirmCancel(context, label)) return;
+                  try {
+                    await ref.read(appointmentServiceProvider).cancelAppointment(appointment.id);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('Could not cancel. $e')));
+                  }
+                },
+              )
+            : null,
       ),
     );
   }
 }
 
-class _MonitoringCallTile extends StatelessWidget {
+class _MonitoringCallTile extends ConsumerWidget {
   final MonitoringCall call;
   const _MonitoringCallTile({required this.call});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label = DateFormat('EEE, d MMM · h:mm a').format(call.scheduledAt);
     return Card(
       child: ListTile(
         leading: const Icon(Icons.phone_in_talk_outlined),
-        title: Text(DateFormat('EEE, d MMM · h:mm a').format(call.scheduledAt)),
-        subtitle: Text(call.status.name),
+        title: Text(label),
+        subtitle: Text(call.status.wireValue),
+        trailing: _isCancellable(call.status)
+            ? IconButton(
+                icon: const Icon(Icons.cancel_outlined),
+                tooltip: 'Cancel',
+                onPressed: () async {
+                  if (!await _confirmCancel(context, label)) return;
+                  try {
+                    await ref.read(appointmentServiceProvider).cancelMonitoringCall(call.id);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('Could not cancel. $e')));
+                  }
+                },
+              )
+            : null,
       ),
     );
   }

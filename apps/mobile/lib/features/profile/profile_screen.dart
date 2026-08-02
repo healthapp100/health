@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/state_widgets.dart';
 import 'consent_settings_screen.dart';
+import 'edit_profile_screen.dart';
 import 'profile_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -24,6 +25,10 @@ class ProfileScreen extends ConsumerWidget {
               leading: const CircleAvatar(child: Icon(Icons.person)),
               title: Text(profile.fullName ?? 'Add your name'),
               subtitle: Text(profile.phone ?? profile.email ?? ''),
+              trailing: const Icon(Icons.edit_outlined),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => EditProfileScreen(profile: profile)),
+              ),
             ),
             const Divider(),
             ListTile(

@@ -62,4 +62,13 @@ class ContentService {
         .limit(1);
     return (rows as List<dynamic>).isNotEmpty;
   }
+
+  Future<void> cancelRegistration(String seminarId) async {
+    final patientId = _client.auth.currentUser!.id;
+    await _client
+        .from('seminar_registrations')
+        .delete()
+        .eq('seminar_id', seminarId)
+        .eq('patient_id', patientId);
+  }
 }

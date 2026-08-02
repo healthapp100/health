@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/state_widgets.dart';
@@ -32,7 +33,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -48,12 +49,12 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         title: const Text('Learn'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [Tab(text: 'Articles'), Tab(text: 'Seminars')],
+          tabs: const [Tab(text: 'Articles'), Tab(text: 'Seminars'), Tab(text: 'Past recordings')],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildArticlesTab(), _buildSeminarsTab()],
+        children: [_buildArticlesTab(), _buildSeminarsTab(), _buildPastSeminarsTab()],
       ),
     );
   }
@@ -112,28 +113,93 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         error: null,
         isLoading: false,
         emptyTitle: 'No upcoming seminars',
+        itemBuilder: (context, seminar) => _SeminarTile(seminar: seminar),
+      ),
+      loading: () => const LoadingState(),
+      error: (e, _) => ErrorState(message: '$e'),
+    );
+  }
+
+  Widget _buildPastSeminarsTab() {
+    final pastAsync = ref.watch(pastSeminarsProvider);
+    return pastAsync.when(
+      data: (seminars) => AsyncListView<Seminar>(
+        data: seminars,
+        error: null,
+        isLoading: false,
+        emptyTitle: 'No past recordings yet',
         itemBuilder: (context, seminar) => Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
+            leading: const Icon(Icons.play_circle_outline),
             title: Text(seminar.title),
             subtitle: Text(
-              '${seminar.speakerName} · ${DateFormat('EEE, d MMM · h:mm a').format(seminar.scheduledAt)}',
+              '${seminar.speakerName} · ${DateFormat('d MMM yyyy').format(seminar.scheduledAt)}',
             ),
-            trailing: FilledButton(
-              onPressed: () async {
-                await ref.read(contentServiceProvider).registerForSeminar(seminar.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(const SnackBar(content: Text('Registered — we’ll remind you')));
-                }
-              },
-              child: const Text('Register'),
-            ),
+            onTap: () async {
+              final uri = Uri.parse(seminar.recordingUrl!);
+              final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+              if (!opened && context.mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('Could not open the recording')));
+              }
+            },
           ),
         ),
       ),
       loading: () => const LoadingState(),
       error: (e, _) => ErrorState(message: '$e'),
+    );
+  }
+}
+
+class _SeminarTile extends ConsumerWidget {
+  final Seminar seminar;
+  const _SeminarTile({required this.seminar});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final registeredAsync = ref.watch(seminarRegisteredProvider(seminar.id));
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        title: Text(seminar.title),
+        subtitle: Text(
+          '${seminar.speakerName} · ${DateFormat('EEE, d MMM · h:mm a').format(seminar.scheduledAt)}',
+        ),
+        trailing: registeredAsync.when(
+          data: (isRegistered) => isRegistered
+              ? OutlinedButton(
+                  onPressed: () async {
+                    await ref.read(contentServiceProvider).cancelRegistration(seminar.id);
+                    ref.invalidate(seminarRegisteredProvider(seminar.id));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(const SnackBar(content: Text('Registration cancelled')));
+                    }
+                  },
+                  child: const Text('Registered'),
+                )
+              : FilledButton(
+                  onPressed: () async {
+                    await ref.read(contentServiceProvider).registerForSeminar(seminar.id);
+                    ref.invalidate(seminarRegisteredProvider(seminar.id));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(const SnackBar(content: Text('Registered — we’ll remind you')));
+                    }
+                  },
+                  child: const Text('Register'),
+                ),
+          loading: () => const SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          error: (e, _) => const SizedBox.shrink(),
+        ),
+      ),
     );
   }
 }

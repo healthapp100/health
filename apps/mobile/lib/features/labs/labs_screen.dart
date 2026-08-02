@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/state_widgets.dart';
@@ -63,6 +64,16 @@ class LabsScreen extends ConsumerWidget {
                   title: Text(result.resultSummary ?? 'Lab report'),
                   subtitle: Text(DateFormat('d MMM yyyy').format(result.reportedAt)),
                   trailing: result.resultFileUrl != null ? const Icon(Icons.download_outlined) : null,
+                  onTap: result.resultFileUrl == null
+                      ? null
+                      : () async {
+                          final uri = Uri.parse(result.resultFileUrl!);
+                          final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          if (!opened && context.mounted) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(content: Text('Could not open the report')));
+                          }
+                        },
                 ),
               ),
               loading: () => const LoadingState(),

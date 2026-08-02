@@ -166,7 +166,7 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
                 _Channel.email => "We'll email you a one-time code to sign in.",
                 _Channel.password =>
                   _isSignUp ? 'Create an account with email and password.' : 'Sign in with your email and password.',
-              }),
+              },),
               const SizedBox(height: 16),
               SegmentedButton<_Channel>(
                 segments: const [
@@ -261,7 +261,7 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
                           _Channel.phone => 'Send code',
                           _Channel.email => 'Send code',
                           _Channel.password => _isSignUp ? 'Create account' : 'Sign in',
-                        }),
+                        },),
                 ),
               ),
               const SizedBox(height: 24),

@@ -51,6 +51,10 @@ dependencies:
   # Prescription/lab-report capture
   image_picker: ^1.1.2
 
+  # Opens lab report file URLs (public.lab_results.result_file_url) in the platform's
+  # PDF/image viewer or browser rather than embedding a viewer in-app.
+  url_launcher: ^6.3.1
+
   # Formatting (dates, tabular numeric display for lab values per BLUEPRINT.md §4.4)
   intl: ^0.19.0
 

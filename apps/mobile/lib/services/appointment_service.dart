@@ -58,4 +58,12 @@ class AppointmentService {
         .order('scheduled_at')
         .map((rows) => rows.map(MonitoringCall.fromJson).toList());
   }
+
+  Future<void> cancelMonitoringCall(String callId) async {
+    await _client
+        .from('monitoring_calls')
+        .update({'status': AppointmentStatus.cancelled.wireValue})
+        .eq('id', callId)
+        .eq('patient_id', _patientId);
+  }
 }

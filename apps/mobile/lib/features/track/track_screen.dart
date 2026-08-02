@@ -2,8 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers/service_providers.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/vital.dart';
+import 'add_reminder_sheet.dart';
 import 'log_vital_sheet.dart';
 import 'track_providers.dart';
 
@@ -28,6 +30,12 @@ class TrackScreen extends ConsumerWidget {
           _VitalTrendCard(metricType: VitalMetric.bloodGlucose, label: 'Blood glucose', unit: 'mg/dL'),
           SizedBox(height: 16),
           _VitalTrendCard(metricType: VitalMetric.systolicBp, label: 'Systolic BP', unit: 'mmHg'),
+          SizedBox(height: 16),
+          _VitalTrendCard(metricType: VitalMetric.diastolicBp, label: 'Diastolic BP', unit: 'mmHg'),
+          SizedBox(height: 16),
+          _VitalTrendCard(metricType: VitalMetric.weightKg, label: 'Weight', unit: 'kg'),
+          SizedBox(height: 16),
+          _VitalTrendCard(metricType: VitalMetric.heartRate, label: 'Heart rate', unit: 'bpm'),
           SizedBox(height: 24),
           _MealPlanCard(),
           SizedBox(height: 24),
@@ -173,8 +181,17 @@ class _RemindersCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Medicine reminders', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Medicine reminders', style: Theme.of(context).textTheme.titleMedium),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  tooltip: 'Add reminder',
+                  onPressed: () => showAddReminderSheet(context, ref),
+                ),
+              ],
+            ),
             remindersAsync.when(
               data: (reminders) {
                 if (reminders.isEmpty) {
@@ -187,7 +204,27 @@ class _RemindersCard extends ConsumerWidget {
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.medication_outlined),
                           title: Text(r.medicineName),
-                          subtitle: Text(r.dosage ?? ''),
+                          subtitle: Text(
+                            [
+                              if (r.dosage != null) r.dosage!,
+                              if (r.schedule.isNotEmpty) r.schedule.first.time,
+                            ].join(' · '),
+                          ),
+                          trailing: Switch(
+                            value: r.active,
+                            onChanged: (value) async {
+                              try {
+                                await ref
+                                    .read(medicineReminderServiceProvider)
+                                    .setActive(r.id, value);
+                                ref.invalidate(activeRemindersProvider);
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(content: Text('Could not update. $e')));
+                              }
+                            },
+                          ),
                         ),
                       )
                       .toList(),

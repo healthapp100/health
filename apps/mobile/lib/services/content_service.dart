@@ -20,6 +20,22 @@ class ContentService {
         .toList();
   }
 
+  /// Free-text search across title/summary — powers the Learn tab's search-first browsing
+  /// (replacing a wall of 22 always-visible category chips with search + a handful of curated
+  /// categories, per the world-class-redesign research pass).
+  Future<List<HealthArticle>> searchArticles(String query, {String contentType = 'article'}) async {
+    final escaped = query.replaceAll('%', '');
+    final rows = await _client
+        .from('health_articles')
+        .select()
+        .eq('content_type', contentType)
+        .or('title.ilike.%$escaped%,summary.ilike.%$escaped%')
+        .order('published_at', ascending: false);
+    return (rows as List<dynamic>)
+        .map((r) => HealthArticle.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<HealthArticle> getArticleBySlug(String slug) async {
     final row = await _client.from('health_articles').select().eq('slug', slug).single();
     return HealthArticle.fromJson(row);

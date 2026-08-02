@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/service_providers.dart';
+import '../../core/widgets/design_system.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/lab.dart';
 
@@ -41,16 +42,28 @@ class LabsScreen extends ConsumerWidget {
                 error: null,
                 isLoading: false,
                 emptyTitle: 'No lab orders yet',
-                itemBuilder: (context, order) => ListTile(
-                  leading: const Icon(Icons.science_outlined),
-                  title: Text(order.testName),
-                  subtitle: Text(order.status.name),
-                  trailing: order.scheduledAt != null
-                      ? Text(DateFormat('d MMM').format(order.scheduledAt!))
-                      : null,
+                itemBuilder: (context, order) => Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: ListTile(
+                    leading: const Icon(Icons.science_outlined),
+                    title: Text(order.testName),
+                    subtitle: Align(
+                      alignment: Alignment.centerLeft,
+                      child: StatusChip(
+                        label: labOrderStatusLabel(order.status),
+                        tone: labOrderStatusTone(order.status),
+                      ),
+                    ),
+                    trailing: order.scheduledAt != null
+                        ? Text(DateFormat('d MMM').format(order.scheduledAt!))
+                        : null,
+                  ),
                 ),
               ),
-              loading: () => const LoadingState(),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: SkeletonList(count: 3),
+              ),
               error: (e, _) => ErrorState(message: '$e'),
             ),
             resultsAsync.when(
@@ -59,24 +72,31 @@ class LabsScreen extends ConsumerWidget {
                 error: null,
                 isLoading: false,
                 emptyTitle: 'No results in your vault yet',
-                itemBuilder: (context, result) => ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(result.resultSummary ?? 'Lab report'),
-                  subtitle: Text(DateFormat('d MMM yyyy').format(result.reportedAt)),
-                  trailing: result.resultFileUrl != null ? const Icon(Icons.download_outlined) : null,
-                  onTap: result.resultFileUrl == null
-                      ? null
-                      : () async {
-                          final uri = Uri.parse(result.resultFileUrl!);
-                          final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          if (!opened && context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(content: Text('Could not open the report')));
-                          }
-                        },
+                itemBuilder: (context, result) => Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(result.resultSummary ?? 'Lab report'),
+                    subtitle: Text(DateFormat('d MMM yyyy').format(result.reportedAt)),
+                    trailing: result.resultFileUrl != null ? const Icon(Icons.download_outlined) : null,
+                    onTap: result.resultFileUrl == null
+                        ? null
+                        : () async {
+                            final uri = Uri.parse(result.resultFileUrl!);
+                            final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            if (!opened && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not open the report')),
+                              );
+                            }
+                          },
+                  ),
                 ),
               ),
-              loading: () => const LoadingState(),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: SkeletonList(count: 3),
+              ),
               error: (e, _) => ErrorState(message: '$e'),
             ),
           ],

@@ -3,126 +3,240 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/widgets/design_system.dart';
 import '../../core/widgets/state_widgets.dart';
+import '../../models/appointment.dart';
 import '../../models/vital.dart';
+import '../track/log_vital_sheet.dart';
+import '../track/track_providers.dart';
 import 'home_providers.dart';
 
+/// Redesigned as a real "today" dashboard rather than three disconnected list sections:
+/// a greeting, one unified "what's next" hero (whichever of appointment/check-in is soonest),
+/// glanceable vitals with trend sparklines, and one-tap quick actions — the pattern Apple Health
+/// and Ada Health converge on for a chronic-care home screen (lead with status, not a table).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(upcomingAppointmentsProvider);
     final monitoringCalls = ref.watch(upcomingMonitoringCallsProvider);
-    final latestGlucose = ref.watch(latestVitalsProvider(VitalMetric.bloodGlucose));
+    final glucose = ref.watch(latestVitalsProvider(VitalMetric.bloodGlucose));
+    final glucoseTrend = ref.watch(vitalTrendProvider(VitalMetric.bloodGlucose));
+    final systolic = ref.watch(latestVitalsProvider(VitalMetric.systolicBp));
+    final systolicTrend = ref.watch(vitalTrendProvider(VitalMetric.systolicBp));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(upcomingAppointmentsProvider);
-          ref.invalidate(upcomingMonitoringCallsProvider);
-          ref.invalidate(latestVitalsProvider);
-        },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _SectionHeader(title: 'Next up', onSeeAll: () => context.go('/care')),
-            appointments.when(
-              data: (list) {
-                final upcoming = list
-                    .where((a) => a.scheduledAt.isAfter(DateTime.now()))
-                    .toList()
-                  ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-                if (upcoming.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.event_available_outlined,
-                    title: 'No upcoming calls',
-                    subtitle: 'Book a doctor call from the Care tab.',
-                  );
-                }
-                final next = upcoming.first;
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.video_call_outlined),
-                    title: Text(DateFormat('EEE, d MMM · h:mm a').format(next.scheduledAt)),
-                    subtitle: Text(next.reason ?? next.mode.wireValue),
-                  ),
-                );
-              },
-              loading: () => const LoadingState(),
-              error: (e, _) => ErrorState(message: '$e'),
-            ),
-            const SizedBox(height: 24),
-            _SectionHeader(title: 'Wellness check-ins', onSeeAll: () => context.go('/care')),
-            monitoringCalls.when(
-              data: (list) {
-                final upcoming = list.where((c) => c.scheduledAt.isAfter(DateTime.now())).toList();
-                if (upcoming.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.phone_in_talk_outlined,
-                    title: 'No check-ins scheduled',
-                  );
-                }
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.phone_in_talk_outlined),
-                    title: Text(DateFormat('EEE, d MMM · h:mm a').format(upcoming.first.scheduledAt)),
-                    subtitle: const Text('Wellness & adherence check-in'),
-                  ),
-                );
-              },
-              loading: () => const LoadingState(),
-              error: (e, _) => ErrorState(message: '$e'),
-            ),
-            const SizedBox(height: 24),
-            _SectionHeader(title: 'Latest reading', onSeeAll: () => context.go('/track')),
-            latestGlucose.when(
-              data: (vital) {
-                if (vital == null) {
-                  return const EmptyState(
-                    icon: Icons.monitor_heart_outlined,
-                    title: 'No readings logged yet',
-                    subtitle: 'Log your first vital from the Track tab.',
-                  );
-                }
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.bloodtype_outlined),
-                    title: Text(
-                      '${vital.value.toStringAsFixed(1)} ${vital.unit}',
-                      style: Theme.of(context).textTheme.labelLarge,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(upcomingAppointmentsProvider);
+            ref.invalidate(upcomingMonitoringCallsProvider);
+            ref.invalidate(latestVitalsProvider);
+            ref.invalidate(vitalTrendProvider);
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(_greeting(), style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                DateFormat('EEEE, d MMMM').format(DateTime.now()),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              _NextUpHero(appointments: appointments, monitoringCalls: monitoringCalls),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Your vitals'),
+              Row(
+                children: [
+                  Expanded(
+                    child: glucose.when(
+                      data: (v) => MetricSummaryCard(
+                        icon: Icons.bloodtype_outlined,
+                        label: 'Blood glucose',
+                        value: v?.value.toStringAsFixed(0) ?? '--',
+                        unit: v?.unit ?? 'mg/dL',
+                        accentColor: Theme.of(context).colorScheme.primary,
+                        trend: glucoseTrend.valueOrNull?.map((e) => e.value).toList(),
+                        onTap: () => context.go('/track'),
+                      ),
+                      loading: () => const SkeletonCard(withLeadingCircle: false),
+                      error: (e, _) => ErrorState(message: '$e'),
                     ),
-                    subtitle: Text('Blood glucose · ${DateFormat('d MMM, h:mm a').format(vital.recordedAt)}'),
                   ),
-                );
-              },
-              loading: () => const LoadingState(),
-              error: (e, _) => ErrorState(message: '$e'),
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: systolic.when(
+                      data: (v) => MetricSummaryCard(
+                        icon: Icons.monitor_heart_outlined,
+                        label: 'Systolic BP',
+                        value: v?.value.toStringAsFixed(0) ?? '--',
+                        unit: v?.unit ?? 'mmHg',
+                        accentColor: Theme.of(context).colorScheme.secondary,
+                        trend: systolicTrend.valueOrNull?.map((e) => e.value).toList(),
+                        onTap: () => context.go('/track'),
+                      ),
+                      loading: () => const SkeletonCard(withLeadingCircle: false),
+                      error: (e, _) => ErrorState(message: '$e'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Quick actions'),
+              _QuickActionsRow(),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onSeeAll;
-  const _SectionHeader({required this.title, required this.onSeeAll});
+class _NextUpHero extends StatelessWidget {
+  final AsyncValue<List<Appointment>> appointments;
+  final AsyncValue<List<MonitoringCall>> monitoringCalls;
+  const _NextUpHero({required this.appointments, required this.monitoringCalls});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          TextButton(onPressed: onSeeAll, child: const Text('See all')),
-        ],
+    if (appointments.isLoading || monitoringCalls.isLoading) {
+      return const SkeletonCard();
+    }
+    if (appointments.hasError) return ErrorState(message: '${appointments.error}');
+    if (monitoringCalls.hasError) return ErrorState(message: '${monitoringCalls.error}');
+
+    final now = DateTime.now();
+    final nextAppointment = (appointments.valueOrNull ?? const [])
+        .where((a) => a.scheduledAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    final nextCall = (monitoringCalls.valueOrNull ?? const [])
+        .where((c) => c.scheduledAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    final appointment = nextAppointment.isNotEmpty ? nextAppointment.first : null;
+    final call = nextCall.isNotEmpty ? nextCall.first : null;
+
+    // Show whichever of the two is soonest — a patient shouldn't have to check two sections to
+    // know what's actually next.
+    final showAppointment =
+        appointment != null && (call == null || appointment.scheduledAt.isBefore(call.scheduledAt));
+
+    if (appointment == null && call == null) {
+      return ActionableEmptyState(
+        icon: Icons.event_available_outlined,
+        title: 'Nothing scheduled yet',
+        subtitle: 'Book a doctor call or wellness check-in to get started.',
+        actionLabel: 'Go to Care',
+        onAction: () => context.go('/care'),
+      );
+    }
+
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.go('/care'),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    showAppointment ? Icons.videocam_outlined : Icons.phone_in_talk_outlined,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    showAppointment ? 'Next: Doctor consultation' : 'Next: Wellness check-in',
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                DateFormat('EEEE, d MMM · h:mm a')
+                    .format(showAppointment ? appointment.scheduledAt : call!.scheduledAt),
+                style: theme.textTheme.headlineMedium
+                    ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+              ),
+              if (showAppointment && appointment.reason != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  appointment.reason!,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                ),
+              ],
+              const SizedBox(height: 12),
+              StatusChip(
+                label: appointmentStatusLabel(showAppointment ? appointment.status : call!.status),
+                tone: appointmentStatusTone(showAppointment ? appointment.status : call!.status),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _QuickActionsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = [
+      (Icons.add_chart_outlined, 'Log reading', () => showLogVitalSheet(context, ref)),
+      (Icons.medical_services_outlined, 'Book a call', () => context.go('/care')),
+      (Icons.school_outlined, 'Seminars', () => context.go('/learn')),
+      (Icons.science_outlined, 'Lab tests', () => context.go('/labs')),
+    ];
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      children: actions
+          .map(
+            (a) => InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: a.$3,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(a.$1, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    a.$2,
+                    style: Theme.of(context).textTheme.labelSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }

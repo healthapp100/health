@@ -9,6 +9,11 @@ final vitalTrendProvider =
   return ref.watch(vitalsServiceProvider).getTrend(metricType);
 });
 
+final latestVitalsProvider =
+    FutureProvider.autoDispose.family<Vital?, String>((ref, metricType) {
+  return ref.watch(vitalsServiceProvider).getLatest(metricType);
+});
+
 final todaysMealPlanProvider = FutureProvider.autoDispose<MealPlan?>((ref) {
   return ref.watch(mealPlanServiceProvider).getPlanForDate(DateTime.now());
 });

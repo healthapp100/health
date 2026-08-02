@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/providers/service_providers.dart';
+import '../../core/widgets/design_system.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/appointment.dart';
 import '../../models/enums.dart';
@@ -69,23 +70,28 @@ class _MyCallsTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Doctor consultations', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SectionHeader(title: 'Doctor consultations'),
         appointments.when(
           data: (list) => list.isEmpty
-              ? const EmptyState(icon: Icons.medical_services_outlined, title: 'No consultations yet')
+              ? const ActionableEmptyState(
+                  icon: Icons.medical_services_outlined,
+                  title: 'No consultations yet',
+                  subtitle: 'Book one from the "Find a doctor" tab.',
+                )
               : Column(children: list.map((a) => _AppointmentTile(appointment: a)).toList()),
-          loading: () => const LoadingState(),
+          loading: () => const SkeletonList(count: 2),
           error: (e, _) => ErrorState(message: '$e'),
         ),
         const SizedBox(height: 24),
-        Text('Wellness check-ins', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SectionHeader(title: 'Wellness check-ins'),
         monitoringCalls.when(
           data: (list) => list.isEmpty
-              ? const EmptyState(icon: Icons.phone_in_talk_outlined, title: 'No check-ins scheduled')
+              ? const ActionableEmptyState(
+                  icon: Icons.phone_in_talk_outlined,
+                  title: 'No check-ins scheduled',
+                )
               : Column(children: list.map((c) => _MonitoringCallTile(call: c)).toList()),
-          loading: () => const LoadingState(),
+          loading: () => const SkeletonList(count: 2),
           error: (e, _) => ErrorState(message: '$e'),
         ),
       ],
@@ -123,7 +129,13 @@ class _AppointmentTile extends ConsumerWidget {
       child: ListTile(
         leading: Icon(appointment.mode.name == 'video' ? Icons.videocam_outlined : Icons.call_outlined),
         title: Text(label),
-        subtitle: Text(appointment.status.wireValue),
+        subtitle: Align(
+          alignment: Alignment.centerLeft,
+          child: StatusChip(
+            label: appointmentStatusLabel(appointment.status),
+            tone: appointmentStatusTone(appointment.status),
+          ),
+        ),
         trailing: _isCancellable(appointment.status)
             ? IconButton(
                 icon: const Icon(Icons.cancel_outlined),
@@ -156,7 +168,13 @@ class _MonitoringCallTile extends ConsumerWidget {
       child: ListTile(
         leading: const Icon(Icons.phone_in_talk_outlined),
         title: Text(label),
-        subtitle: Text(call.status.wireValue),
+        subtitle: Align(
+          alignment: Alignment.centerLeft,
+          child: StatusChip(
+            label: appointmentStatusLabel(call.status),
+            tone: appointmentStatusTone(call.status),
+          ),
+        ),
         trailing: _isCancellable(call.status)
             ? IconButton(
                 icon: const Icon(Icons.cancel_outlined),
@@ -189,7 +207,11 @@ class _FindProviderTab extends ConsumerWidget {
 
     return providersAsync.when(
       data: (providers) => providers.isEmpty
-          ? const EmptyState(icon: Icons.person_search_outlined, title: 'No verified providers yet')
+          ? const ActionableEmptyState(
+              icon: Icons.person_search_outlined,
+              title: 'No verified providers yet',
+              subtitle: 'Check back soon — new providers are added regularly.',
+            )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: providers.length,
@@ -214,7 +236,10 @@ class _FindProviderTab extends ConsumerWidget {
                 );
               },
             ),
-      loading: () => const LoadingState(),
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: SkeletonList(count: 4),
+      ),
       error: (e, _) => ErrorState(message: '$e'),
     );
   }

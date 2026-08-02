@@ -8,6 +8,11 @@ final articlesProvider =
   return ref.watch(contentServiceProvider).getArticles(category: category);
 });
 
+final articleSearchProvider =
+    FutureProvider.autoDispose.family<List<HealthArticle>, String>((ref, query) {
+  return ref.watch(contentServiceProvider).searchArticles(query);
+});
+
 final upcomingSeminarsProvider = FutureProvider.autoDispose<List<Seminar>>((ref) {
   return ref.watch(contentServiceProvider).getUpcomingSeminars();
 });

@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/enums.dart';
+import '../theme/app_theme.dart';
 
 /// Shared visual primitives introduced in the world-class-redesign pass: skeleton loaders
 /// (replacing bare spinners), status chips (color-coded state at a glance — appointment/lab
@@ -158,7 +159,10 @@ String labOrderStatusLabel(LabOrderStatus status) => switch (status) {
     };
 
 /// Color-coded status-at-a-glance chip. Colors are drawn from the theme's semantic slots
-/// (error/tertiary) rather than hardcoded hex, so this stays correct in dark mode automatically.
+/// (error/tertiary/[SemanticColors]) rather than hardcoded hex, so this stays correct — and
+/// keeps passing WCAG AA contrast — in dark mode automatically. Never relies on color alone:
+/// the text label always ships alongside the color, so color-blind users aren't excluded
+/// (WCAG 1.4.1).
 class StatusChip extends StatelessWidget {
   final String label;
   final StatusTone tone;
@@ -167,22 +171,29 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<SemanticColors>();
     final (bg, fg) = switch (tone) {
       StatusTone.success => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      StatusTone.warning => (const Color(0xFFFFF1C2), const Color(0xFF6B4E00)),
+      StatusTone.warning => (
+          semantic?.warningContainer ?? scheme.surfaceContainerHighest,
+          semantic?.onWarningContainer ?? scheme.onSurfaceVariant,
+        ),
       StatusTone.danger => (scheme.errorContainer, scheme.onErrorContainer),
       StatusTone.info => (scheme.secondaryContainer, scheme.onSecondaryContainer),
       StatusTone.neutral => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(
-        label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: fg, fontWeight: FontWeight.w600),
+    return Semantics(
+      label: 'Status: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        child: Text(
+          label,
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: fg, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -282,55 +293,76 @@ class MetricSummaryCard extends StatelessWidget {
     this.onTap,
   });
 
+  /// A trend sparkline conveys "rising/falling" visually, which a screen-reader user can't see —
+  /// so the merged semantic label spells that out in words instead of leaving the metric mute.
+  String? get _trendDirection {
+    if (trend == null || trend!.length < 2) return null;
+    final delta = trend!.last - trend!.first;
+    if (delta.abs() < 0.01) return 'steady over recent readings';
+    return delta > 0 ? 'trending up over recent readings' : 'trending down over recent readings';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final semanticLabel = [
+      label,
+      '$value $unit',
+      if (statusLabel != null) statusLabel!,
+      if (_trendDirection != null) _trendDirection!,
+    ].join(', ');
+
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+      child: Semantics(
+        label: semanticLabel,
+        button: onTap != null,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: accentColor, size: 20),
                     ),
-                    child: Icon(icon, color: accentColor, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  if (statusLabel != null)
-                    StatusChip(label: statusLabel!, tone: statusTone ?? StatusTone.neutral),
+                    if (statusLabel != null)
+                      StatusChip(label: statusLabel!, tone: statusTone ?? StatusTone.neutral),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(value, style: theme.textTheme.headlineMedium),
+                    const SizedBox(width: 4),
+                    Text(unit, style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+                if (trend != null && trend!.length >= 2) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(height: 32, child: Sparkline(values: trend!, color: accentColor)),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(value, style: theme.textTheme.headlineMedium),
-                  const SizedBox(width: 4),
-                  Text(unit, style: theme.textTheme.bodyMedium),
-                ],
-              ),
-              if (trend != null && trend!.length >= 2) ...[
-                const SizedBox(height: 8),
-                SizedBox(height: 32, child: Sparkline(values: trend!, color: accentColor)),
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -143,51 +143,67 @@ class _NextUpHero extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
+    final kind = showAppointment ? 'Doctor consultation' : 'Wellness check-in';
+    final when = DateFormat('EEEE, d MMM · h:mm a')
+        .format(showAppointment ? appointment.scheduledAt : call!.scheduledAt);
+    final status = appointmentStatusLabel(showAppointment ? appointment.status : call!.status);
+    final semanticLabel = [
+      'Next: $kind',
+      when,
+      if (showAppointment && appointment.reason != null) appointment.reason!,
+      status,
+      'Opens Care tab',
+    ].join(', ');
+
     return Card(
       color: theme.colorScheme.primaryContainer,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.go('/care'),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    showAppointment ? Icons.videocam_outlined : Icons.phone_in_talk_outlined,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 8),
+      child: Semantics(
+        button: true,
+        label: semanticLabel,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => context.go('/care'),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      showAppointment ? Icons.videocam_outlined : Icons.phone_in_talk_outlined,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Next: $kind',
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  when,
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                ),
+                if (showAppointment && appointment.reason != null) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    showAppointment ? 'Next: Doctor consultation' : 'Next: Wellness check-in',
-                    style: theme.textTheme.labelLarge
+                    appointment.reason!,
+                    style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                DateFormat('EEEE, d MMM · h:mm a')
-                    .format(showAppointment ? appointment.scheduledAt : call!.scheduledAt),
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
-              ),
-              if (showAppointment && appointment.reason != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  appointment.reason!,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+                const SizedBox(height: 12),
+                StatusChip(
+                  label: status,
+                  tone: appointmentStatusTone(showAppointment ? appointment.status : call!.status),
                 ),
               ],
-              const SizedBox(height: 12),
-              StatusChip(
-                label: appointmentStatusLabel(showAppointment ? appointment.status : call!.status),
-                tone: appointmentStatusTone(showAppointment ? appointment.status : call!.status),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -212,27 +228,32 @@ class _QuickActionsRow extends ConsumerWidget {
       crossAxisSpacing: 8,
       children: actions
           .map(
-            (a) => InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: a.$3,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
+            (a) => Semantics(
+              button: true,
+              label: a.$2,
+              excludeSemantics: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: a.$3,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(a.$1, color: Theme.of(context).colorScheme.primary),
                     ),
-                    child: Icon(a.$1, color: Theme.of(context).colorScheme.primary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    a.$2,
-                    style: Theme.of(context).textTheme.labelSmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      a.$2,
+                      style: Theme.of(context).textTheme.labelSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           )

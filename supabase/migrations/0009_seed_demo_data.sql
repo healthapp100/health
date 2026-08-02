@@ -1,16 +1,16 @@
 -- Demo/seed data so a freshly-signed-up account has something to show in every tab
 -- (Home, Care, Track, Labs, Learn) instead of correct-but-empty states.
 --
--- BEFORE RUNNING: replace the two email placeholders below.
---   patient_email — your real login email. This script promotes that same account to
---                   role = 'admin' (safe — no screen in the app gates on the logged-in
---                   user's own role, so all patient-side testing still works unchanged)
---                   and uses it as the author of published content (articles, seminars).
---   doctor_email  — a second account (create via Supabase → Authentication → Users → Add user,
---                   with Auto Confirm User checked — no OTP needed) that this script promotes to
---                   'doctor' and uses for appointments/monitoring calls.
--- Both accounts must already exist as profiles before running this (profiles are only created
--- by the on-signup trigger from migration 0002, which fires for dashboard-created users too).
+-- BEFORE RUNNING: replace the admin email placeholder below with your real login email.
+--   admin_email   — your real login email. Promoted to role = 'admin'; used as the author of
+--                   published content (articles, seminars).
+--   doctor@gmail.com / patient@gmail.com — two dedicated demo accounts, each created via
+--                   Supabase → Authentication → Users → Add user with Auto Confirm User checked
+--                   (no OTP or real inbox needed). Promoted to 'doctor' and kept as 'patient';
+--                   used to own the demo appointments/calls and to hold the demo patient data.
+-- All three accounts must already exist as profiles before running this (profiles are only
+-- created by the on-signup trigger from migration 0002, which fires for dashboard-created users
+-- too).
 
 do $$
 declare
@@ -18,15 +18,18 @@ declare
   doctor_id uuid;
   admin_id uuid;
 begin
-  select id into patient_id from public.profiles where email = 'patient_email@example.com';
-  select id into doctor_id from public.profiles where email = 'doctor.demo@example.com';
-  admin_id := patient_id;
+  select id into admin_id from public.profiles where email = 'admin_email@example.com';
+  select id into doctor_id from public.profiles where email = 'doctor@gmail.com';
+  select id into patient_id from public.profiles where email = 'patient@gmail.com';
 
-  if patient_id is null then
-    raise exception 'No profile found for patient_email — sign in with that email first, then update the placeholder in this script.';
+  if admin_id is null then
+    raise exception 'No profile found for admin_email — sign in with your real email first, then update the placeholder in this script.';
   end if;
   if doctor_id is null then
-    raise exception 'No profile found for doctor.demo@example.com — create that user in Supabase → Authentication → Users first.';
+    raise exception 'No profile found for doctor@gmail.com — create that user in Supabase → Authentication → Users first.';
+  end if;
+  if patient_id is null then
+    raise exception 'No profile found for patient@gmail.com — create that user in Supabase → Authentication → Users first.';
   end if;
 
   update public.profiles

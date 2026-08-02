@@ -1,17 +1,16 @@
 -- Demo/seed data so a freshly-signed-up account has something to show in every tab
 -- (Home, Care, Track, Labs, Learn) instead of correct-but-empty states.
 --
--- BEFORE RUNNING: replace the three email placeholders below.
---   patient_email — the account you log in and test with (your existing patient account).
+-- BEFORE RUNNING: replace the two email placeholders below.
+--   patient_email — your real login email. This script promotes that same account to
+--                   role = 'admin' (safe — no screen in the app gates on the logged-in
+--                   user's own role, so all patient-side testing still works unchanged)
+--                   and uses it as the author of published content (articles, seminars).
 --   doctor_email  — a second account (create via Supabase → Authentication → Users → Add user,
 --                   with Auto Confirm User checked — no OTP needed) that this script promotes to
 --                   'doctor' and uses for appointments/monitoring calls.
---   admin_email   — a third account, created the same way, promoted to 'admin' and used as the
---                   author of published content (articles, seminars) — matches how a real admin
---                   will manage weekly sessions and content later.
--- All three accounts must already exist as profiles before running this (profiles are only
--- created by the on-signup trigger from migration 0002, which fires for dashboard-created users
--- too).
+-- Both accounts must already exist as profiles before running this (profiles are only created
+-- by the on-signup trigger from migration 0002, which fires for dashboard-created users too).
 
 do $$
 declare
@@ -21,7 +20,7 @@ declare
 begin
   select id into patient_id from public.profiles where email = 'patient_email@example.com';
   select id into doctor_id from public.profiles where email = 'doctor.demo@example.com';
-  select id into admin_id from public.profiles where email = 'admin.demo@example.com';
+  admin_id := patient_id;
 
   if patient_id is null then
     raise exception 'No profile found for patient_email — sign in with that email first, then update the placeholder in this script.';
@@ -29,16 +28,13 @@ begin
   if doctor_id is null then
     raise exception 'No profile found for doctor.demo@example.com — create that user in Supabase → Authentication → Users first.';
   end if;
-  if admin_id is null then
-    raise exception 'No profile found for admin.demo@example.com — create that user in Supabase → Authentication → Users first.';
-  end if;
 
   update public.profiles
     set role = 'doctor', full_name = coalesce(full_name, 'Dr. Asha Sharma')
     where id = doctor_id;
 
   update public.profiles
-    set role = 'admin', full_name = coalesce(full_name, 'Admin')
+    set role = 'admin'
     where id = admin_id;
 
   insert into public.health_articles

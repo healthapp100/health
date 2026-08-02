@@ -73,5 +73,27 @@ class AuthService {
     );
   }
 
+  /// Creates a new account with email+password. Supabase's "Confirm email" setting (dashboard →
+  /// Authentication → Providers → Email) gates sign-in until the user clicks the confirmation
+  /// link sent to [email] — same verification principle as OTP, just a one-time check instead of
+  /// every login.
+  Future<AuthResponse> signUpWithPassword({
+    required String email,
+    required String password,
+  }) {
+    return _client.auth.signUp(email: email, password: password);
+  }
+
+  Future<AuthResponse> signInWithPassword({
+    required String email,
+    required String password,
+  }) {
+    return _client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  Future<void> resetPasswordForEmail(String email) {
+    return _client.auth.resetPasswordForEmail(email);
+  }
+
   Future<void> signOut() => _client.auth.signOut();
 }

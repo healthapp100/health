@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/lab.dart';
 
@@ -34,7 +35,8 @@ class LabsScreen extends ConsumerWidget {
           title: const Text('Lab Tests'),
           bottom: const TabBar(tabs: [Tab(text: 'Orders'), Tab(text: 'Results vault')]),
         ),
-        body: TabBarView(
+        body: ResponsiveContent(
+          child: TabBarView(
           children: [
             ordersAsync.when(
               data: (orders) => AsyncListView<LabOrder>(
@@ -100,6 +102,7 @@ class LabsScreen extends ConsumerWidget {
               error: (e, _) => ErrorState(message: '$e'),
             ),
           ],
+          ),
         ),
       ),
     );

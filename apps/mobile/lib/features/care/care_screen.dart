@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/appointment.dart';
 import '../../models/enums.dart';
@@ -67,34 +68,36 @@ class _MyCallsTab extends ConsumerWidget {
     final appointments = ref.watch(ownAppointmentsProvider);
     final monitoringCalls = ref.watch(ownMonitoringCallsStreamProvider);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SectionHeader(title: 'Doctor consultations'),
-        appointments.when(
-          data: (list) => list.isEmpty
-              ? const ActionableEmptyState(
-                  icon: Icons.medical_services_outlined,
-                  title: 'No consultations yet',
-                  subtitle: 'Book one from the "Find a doctor" tab.',
-                )
-              : Column(children: list.map((a) => _AppointmentTile(appointment: a)).toList()),
-          loading: () => const SkeletonList(count: 2),
-          error: (e, _) => ErrorState(message: '$e'),
-        ),
-        const SizedBox(height: 24),
-        const SectionHeader(title: 'Wellness check-ins'),
-        monitoringCalls.when(
-          data: (list) => list.isEmpty
-              ? const ActionableEmptyState(
-                  icon: Icons.phone_in_talk_outlined,
-                  title: 'No check-ins scheduled',
-                )
-              : Column(children: list.map((c) => _MonitoringCallTile(call: c)).toList()),
-          loading: () => const SkeletonList(count: 2),
-          error: (e, _) => ErrorState(message: '$e'),
-        ),
-      ],
+    return ResponsiveContent(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const SectionHeader(title: 'Doctor consultations'),
+          appointments.when(
+            data: (list) => list.isEmpty
+                ? const ActionableEmptyState(
+                    icon: Icons.medical_services_outlined,
+                    title: 'No consultations yet',
+                    subtitle: 'Book one from the "Find a doctor" tab.',
+                  )
+                : Column(children: list.map((a) => _AppointmentTile(appointment: a)).toList()),
+            loading: () => const SkeletonList(count: 2),
+            error: (e, _) => ErrorState(message: '$e'),
+          ),
+          const SizedBox(height: 24),
+          const SectionHeader(title: 'Wellness check-ins'),
+          monitoringCalls.when(
+            data: (list) => list.isEmpty
+                ? const ActionableEmptyState(
+                    icon: Icons.phone_in_talk_outlined,
+                    title: 'No check-ins scheduled',
+                  )
+                : Column(children: list.map((c) => _MonitoringCallTile(call: c)).toList()),
+            loading: () => const SkeletonList(count: 2),
+            error: (e, _) => ErrorState(message: '$e'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -205,42 +208,44 @@ class _FindProviderTab extends ConsumerWidget {
     final providersAsync =
         role == 'doctor' ? ref.watch(verifiedDoctorsProvider) : ref.watch(verifiedNutritionistsProvider);
 
-    return providersAsync.when(
-      data: (providers) => providers.isEmpty
-          ? const ActionableEmptyState(
-              icon: Icons.person_search_outlined,
-              title: 'No verified providers yet',
-              subtitle: 'Check back soon — new providers are added regularly.',
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: providers.length,
-              itemBuilder: (context, index) {
-                final provider = providers[index];
-                return Card(
-                  child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(provider.fullName),
-                    subtitle: Text(
-                      [
-                        if (provider.specialty != null) provider.specialty!,
-                        if (provider.yearsExperience != null)
-                          '${provider.yearsExperience} yrs experience',
-                      ].join(' · '),
+    return ResponsiveContent(
+      child: providersAsync.when(
+        data: (providers) => providers.isEmpty
+            ? const ActionableEmptyState(
+                icon: Icons.person_search_outlined,
+                title: 'No verified providers yet',
+                subtitle: 'Check back soon — new providers are added regularly.',
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: providers.length,
+                itemBuilder: (context, index) {
+                  final provider = providers[index];
+                  return Card(
+                    child: ListTile(
+                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(provider.fullName),
+                      subtitle: Text(
+                        [
+                          if (provider.specialty != null) provider.specialty!,
+                          if (provider.yearsExperience != null)
+                            '${provider.yearsExperience} yrs experience',
+                        ].join(' · '),
+                      ),
+                      trailing: FilledButton(
+                        onPressed: () => showBookAppointmentSheet(context, ref, provider),
+                        child: const Text('Book'),
+                      ),
                     ),
-                    trailing: FilledButton(
-                      onPressed: () => showBookAppointmentSheet(context, ref, provider),
-                      child: const Text('Book'),
-                    ),
-                  ),
-                );
-              },
-            ),
-      loading: () => const Padding(
-        padding: EdgeInsets.all(16),
-        child: SkeletonList(count: 4),
+                  );
+                },
+              ),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(16),
+          child: SkeletonList(count: 4),
+        ),
+        error: (e, _) => ErrorState(message: '$e'),
       ),
-      error: (e, _) => ErrorState(message: '$e'),
     );
   }
 }

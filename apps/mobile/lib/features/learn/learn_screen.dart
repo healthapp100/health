@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/content.dart';
 import 'learn_providers.dart';
@@ -87,9 +88,11 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
           tabs: const [Tab(text: 'Articles'), Tab(text: 'Seminars'), Tab(text: 'Past recordings')],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildArticlesTab(), _buildSeminarsTab(), _buildPastSeminarsTab()],
+      body: ResponsiveContent(
+        child: TabBarView(
+          controller: _tabController,
+          children: [_buildArticlesTab(), _buildSeminarsTab(), _buildPastSeminarsTab()],
+        ),
       ),
     );
   }

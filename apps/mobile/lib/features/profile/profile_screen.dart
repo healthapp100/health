@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import 'consent_settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -20,7 +21,9 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: profileAsync.when(
-        data: (profile) => ListView(
+        data: (profile) => ResponsiveContent(
+          maxWidth: 600,
+          child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             Card(
@@ -96,6 +99,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ],
+          ),
         ),
         loading: () => const Padding(
           padding: EdgeInsets.all(16),

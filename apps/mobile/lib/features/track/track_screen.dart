@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/vital.dart';
 import 'add_reminder_sheet.dart';
@@ -27,17 +28,19 @@ class TrackScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Log reading'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          SectionHeader(title: 'Your vitals'),
-          _VitalsSummaryGrid(),
-          SizedBox(height: 24),
-          _MealPlanCard(),
-          SizedBox(height: 24),
-          _RemindersCard(),
-          SizedBox(height: 80),
-        ],
+      body: ResponsiveContent(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SectionHeader(title: 'Your vitals'),
+            _VitalsSummaryGrid(),
+            SizedBox(height: 24),
+            _MealPlanCard(),
+            SizedBox(height: 24),
+            _RemindersCard(),
+            SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -50,7 +53,7 @@ class _VitalsSummaryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: responsiveGridColumns(context, compact: 2, medium: 4, expanded: 4),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,

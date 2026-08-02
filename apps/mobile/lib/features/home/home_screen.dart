@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/widgets/design_system.dart';
+import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/appointment.dart';
 import '../../models/vital.dart';
@@ -43,7 +44,8 @@ class HomeScreen extends ConsumerWidget {
             ref.invalidate(latestVitalsProvider);
             ref.invalidate(vitalTrendProvider);
           },
-          child: ListView(
+          child: ResponsiveContent(
+            child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text(_greeting(), style: Theme.of(context).textTheme.headlineMedium),
@@ -94,6 +96,7 @@ class HomeScreen extends ConsumerWidget {
               const SectionHeader(title: 'Quick actions'),
               _QuickActionsRow(),
             ],
+            ),
           ),
         ),
       ),

@@ -21,6 +21,28 @@ import 'scaffold_with_nav.dart';
 /// motivated choosing it over alternatives (pubspec.yaml's reasoning).
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// A gentle fade+slide-up replaces go_router's default (an abrupt platform-default push, which
+/// on Flutter Web is a hard cut) for the handful of routes reached by explicit navigation
+/// (verify code, consent, article detail, lab tests) — the shell's 5 tab destinations
+/// intentionally do NOT use this, since StatefulShellRoute's IndexedStack switch is instant by
+/// design and animating it would fight the "keep each tab's stack alive" behavior.
+CustomTransitionPage<void> _fadeSlidePage(Widget child) {
+  return CustomTransitionPage<void>(
+    child: child,
+    transitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.03), end: Offset.zero).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
@@ -41,14 +63,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/auth/phone', builder: (context, state) => const PhoneEntryScreen()),
       GoRoute(
         path: '/auth/verify',
-        builder: (context, state) => OtpVerifyScreen(
-          contact: state.extra as AuthContact? ?? const AuthContact.phone(''),
+        pageBuilder: (context, state) => _fadeSlidePage(
+          OtpVerifyScreen(contact: state.extra as AuthContact? ?? const AuthContact.phone('')),
         ),
       ),
-      GoRoute(path: '/onboarding/consent', builder: (context, state) => const ConsentScreen()),
+      GoRoute(
+        path: '/onboarding/consent',
+        pageBuilder: (context, state) => _fadeSlidePage(const ConsentScreen()),
+      ),
       GoRoute(
         path: '/learn/article/:slug',
-        builder: (context, state) => ArticleDetailScreen(slug: state.pathParameters['slug']!),
+        pageBuilder: (context, state) =>
+            _fadeSlidePage(ArticleDetailScreen(slug: state.pathParameters['slug']!)),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ScaffoldWithNav(shell: navigationShell),
@@ -80,7 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: '/labs', builder: (context, state) => const LabsScreen()),
+      GoRoute(path: '/labs', pageBuilder: (context, state) => _fadeSlidePage(const LabsScreen())),
     ],
   );
 });

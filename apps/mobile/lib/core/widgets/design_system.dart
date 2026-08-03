@@ -421,3 +421,131 @@ class ActionableEmptyState extends StatelessWidget {
     );
   }
 }
+
+/// Wraps a list item in a staggered fade + slide-up entrance — applied once per item at
+/// construction (each item's [index] offsets its delay), so a freshly-loaded list animates in
+/// as a cascade rather than popping onto the screen all at once. Runs once per widget lifetime
+/// (not on every rebuild) since it's keyed to the item's own State, matching how a real list
+/// reveal should read only the first time content appears.
+class AnimatedListEntry extends StatefulWidget {
+  final int index;
+  final Widget child;
+  const AnimatedListEntry({super.key, required this.index, required this.child});
+
+  @override
+  State<AnimatedListEntry> createState() => _AnimatedListEntryState();
+}
+
+class _AnimatedListEntryState extends State<AnimatedListEntry> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+    final curved = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _fade = curved;
+    _slide = Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(curved);
+    // Cap the stagger so a long list doesn't leave the last items waiting seconds to appear.
+    final delayMs = (widget.index * 40).clamp(0, 320);
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
+    );
+  }
+}
+
+/// A primary action button that morphs into a checkmark + "Done" on success instead of relying
+/// on a SnackBar alone — gives the tap itself a visible result. [onPressed] should return `true`
+/// on success (shows the checkmark) or `false`/throw on failure (button just resets; the caller's
+/// existing SnackBar error handling still applies).
+class AnimatedConfirmButton extends StatefulWidget {
+  final String label;
+  final String successLabel;
+  final Future<bool> Function() onPressed;
+  final bool enabled;
+  /// Called after the checkmark has been shown — e.g. to close the sheet it lives in, once the
+  /// user actually saw confirmation rather than the sheet vanishing the instant they tapped.
+  final VoidCallback? onSuccessComplete;
+
+  const AnimatedConfirmButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.successLabel = 'Done',
+    this.enabled = true,
+    this.onSuccessComplete,
+  });
+
+  @override
+  State<AnimatedConfirmButton> createState() => _AnimatedConfirmButtonState();
+}
+
+enum _ButtonPhase { idle, loading, success }
+
+class _AnimatedConfirmButtonState extends State<AnimatedConfirmButton> {
+  _ButtonPhase _phase = _ButtonPhase.idle;
+
+  Future<void> _handleTap() async {
+    setState(() => _phase = _ButtonPhase.loading);
+    bool success;
+    try {
+      success = await widget.onPressed();
+    } catch (_) {
+      success = false;
+    }
+    if (!mounted) return;
+    if (success) {
+      setState(() => _phase = _ButtonPhase.success);
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!mounted) return;
+      widget.onSuccessComplete?.call();
+      if (mounted) setState(() => _phase = _ButtonPhase.idle);
+    } else {
+      setState(() => _phase = _ButtonPhase.idle);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: (widget.enabled && _phase == _ButtonPhase.idle) ? _handleTap : null,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: switch (_phase) {
+          _ButtonPhase.idle => Text(widget.label, key: const ValueKey('idle')),
+          _ButtonPhase.loading => const SizedBox(
+              key: ValueKey('loading'),
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          _ButtonPhase.success => Row(
+              key: const ValueKey('success'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check, size: 18),
+                const SizedBox(width: 6),
+                Text(widget.successLabel),
+              ],
+            ),
+        },
+      ),
+    );
+  }
+}

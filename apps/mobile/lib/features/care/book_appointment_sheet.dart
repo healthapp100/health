@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/service_providers.dart';
+import '../../core/widgets/design_system.dart';
 import '../../models/enums.dart';
 import '../../models/profile.dart';
 
@@ -31,7 +32,6 @@ class _BookAppointmentSheet extends ConsumerStatefulWidget {
 class _BookAppointmentSheetState extends ConsumerState<_BookAppointmentSheet> {
   DateTime? _selectedSlot;
   AppointmentMode _mode = AppointmentMode.video;
-  bool _isSubmitting = false;
 
   List<DateTime> get _availableSlots {
     final now = DateTime.now();
@@ -41,23 +41,20 @@ class _BookAppointmentSheetState extends ConsumerState<_BookAppointmentSheet> {
     });
   }
 
-  Future<void> _confirm() async {
-    if (_selectedSlot == null) return;
-    setState(() => _isSubmitting = true);
+  Future<bool> _confirm() async {
+    if (_selectedSlot == null) return false;
     try {
       await ref.read(appointmentServiceProvider).bookAppointment(
             providerId: widget.provider.profileId,
             scheduledAt: _selectedSlot!,
             mode: _mode,
           );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment requested')));
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not book. $e')));
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not book. $e')));
+      }
+      return false;
     }
   }
 
@@ -101,11 +98,17 @@ class _BookAppointmentSheetState extends ConsumerState<_BookAppointmentSheet> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: _selectedSlot != null && !_isSubmitting ? _confirm : null,
-              child: _isSubmitting
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Confirm booking'),
+            child: AnimatedConfirmButton(
+              label: 'Confirm booking',
+              successLabel: 'Requested',
+              enabled: _selectedSlot != null,
+              onPressed: _confirm,
+              onSuccessComplete: () {
+                if (!mounted) return;
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('Appointment requested')));
+              },
             ),
           ),
         ],

@@ -108,7 +108,7 @@ class AsyncListView<T> extends StatelessWidget {
   final String emptyTitle;
   final String? emptySubtitle;
   final IconData emptyIcon;
-  final Widget Function(BuildContext context, T item) itemBuilder;
+  final Widget Function(BuildContext context, T item, int index) itemBuilder;
 
   const AsyncListView({
     super.key,
@@ -134,7 +134,7 @@ class AsyncListView<T> extends StatelessWidget {
     }
     return ListView.builder(
       itemCount: items.length,
-      itemBuilder: (context, index) => itemBuilder(context, items[index]),
+      itemBuilder: (context, index) => itemBuilder(context, items[index], index),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/service_providers.dart';
+import '../../core/widgets/design_system.dart';
 import '../../models/meal_plan.dart';
 import 'track_providers.dart';
 
@@ -26,7 +27,6 @@ class _AddReminderSheetState extends ConsumerState<_AddReminderSheet> {
   final _nameController = TextEditingController();
   final _dosageController = TextEditingController();
   TimeOfDay _time = const TimeOfDay(hour: 8, minute: 0);
-  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -40,10 +40,9 @@ class _AddReminderSheetState extends ConsumerState<_AddReminderSheet> {
     if (picked != null) setState(() => _time = picked);
   }
 
-  Future<void> _submit() async {
+  Future<bool> _submit() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) return;
-    setState(() => _isSubmitting = true);
+    if (name.isEmpty) return false;
     try {
       final timeString =
           '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}';
@@ -58,13 +57,12 @@ class _AddReminderSheetState extends ConsumerState<_AddReminderSheet> {
             ),
           );
       ref.invalidate(activeRemindersProvider);
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
+      }
+      return false;
     }
   }
 
@@ -104,11 +102,13 @@ class _AddReminderSheetState extends ConsumerState<_AddReminderSheet> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: _isSubmitting ? null : _submit,
-              child: _isSubmitting
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Save reminder'),
+            child: AnimatedConfirmButton(
+              label: 'Save reminder',
+              successLabel: 'Saved',
+              onPressed: _submit,
+              onSuccessComplete: () {
+                if (mounted) Navigator.of(context).pop();
+              },
             ),
           ),
         ],

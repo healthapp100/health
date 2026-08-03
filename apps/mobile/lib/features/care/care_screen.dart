@@ -80,7 +80,18 @@ class _MyCallsTab extends ConsumerWidget {
                     title: 'No consultations yet',
                     subtitle: 'Book one from the "Find a doctor" tab.',
                   )
-                : Column(children: list.map((a) => _AppointmentTile(appointment: a)).toList()),
+                : Column(
+                    children: list
+                        .asMap()
+                        .entries
+                        .map(
+                          (e) => AnimatedListEntry(
+                            index: e.key,
+                            child: _AppointmentTile(appointment: e.value),
+                          ),
+                        )
+                        .toList(),
+                  ),
             loading: () => const SkeletonList(count: 2),
             error: (e, _) => ErrorState(message: '$e'),
           ),
@@ -92,7 +103,18 @@ class _MyCallsTab extends ConsumerWidget {
                     icon: Icons.phone_in_talk_outlined,
                     title: 'No check-ins scheduled',
                   )
-                : Column(children: list.map((c) => _MonitoringCallTile(call: c)).toList()),
+                : Column(
+                    children: list
+                        .asMap()
+                        .entries
+                        .map(
+                          (e) => AnimatedListEntry(
+                            index: e.key,
+                            child: _MonitoringCallTile(call: e.value),
+                          ),
+                        )
+                        .toList(),
+                  ),
             loading: () => const SkeletonList(count: 2),
             error: (e, _) => ErrorState(message: '$e'),
           ),

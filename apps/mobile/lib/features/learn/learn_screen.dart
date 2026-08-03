@@ -161,15 +161,18 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
               isLoading: false,
               emptyIcon: isSearching ? Icons.search_off : Icons.menu_book_outlined,
               emptyTitle: isSearching ? 'No articles match "$_searchQuery"' : 'No articles in this category yet',
-              itemBuilder: (context, article) => Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: ListTile(
-                  title: Text(article.title),
-                  subtitle: article.summary != null
-                      ? Text(article.summary!, maxLines: 2, overflow: TextOverflow.ellipsis)
-                      : null,
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/learn/article/${article.slug}'),
+              itemBuilder: (context, article, index) => AnimatedListEntry(
+                index: index,
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: ListTile(
+                    title: Text(article.title),
+                    subtitle: article.summary != null
+                        ? Text(article.summary!, maxLines: 2, overflow: TextOverflow.ellipsis)
+                        : null,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/learn/article/${article.slug}'),
+                  ),
                 ),
               ),
             ),
@@ -192,7 +195,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         error: null,
         isLoading: false,
         emptyTitle: 'No upcoming seminars',
-        itemBuilder: (context, seminar) => _SeminarTile(seminar: seminar),
+        itemBuilder: (context, seminar, index) =>
+            AnimatedListEntry(index: index, child: _SeminarTile(seminar: seminar)),
       ),
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
@@ -210,22 +214,25 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         error: null,
         isLoading: false,
         emptyTitle: 'No past recordings yet',
-        itemBuilder: (context, seminar) => Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: const Icon(Icons.play_circle_outline),
-            title: Text(seminar.title),
-            subtitle: Text(
-              '${seminar.speakerName} · ${DateFormat('d MMM yyyy').format(seminar.scheduledAt)}',
+        itemBuilder: (context, seminar, index) => AnimatedListEntry(
+          index: index,
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              leading: const Icon(Icons.play_circle_outline),
+              title: Text(seminar.title),
+              subtitle: Text(
+                '${seminar.speakerName} · ${DateFormat('d MMM yyyy').format(seminar.scheduledAt)}',
+              ),
+              onTap: () async {
+                final uri = Uri.parse(seminar.recordingUrl!);
+                final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (!opened && context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('Could not open the recording')));
+                }
+              },
             ),
-            onTap: () async {
-              final uri = Uri.parse(seminar.recordingUrl!);
-              final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-              if (!opened && context.mounted) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Could not open the recording')));
-              }
-            },
           ),
         ),
       ),

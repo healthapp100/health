@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/service_providers.dart';
+import '../../core/widgets/design_system.dart';
 import '../../models/enums.dart';
 import '../../models/vital.dart';
 import 'track_providers.dart';
@@ -32,7 +33,6 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
 
   String _selectedMetric = VitalMetric.bloodGlucose;
   final _valueController = TextEditingController();
-  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -40,10 +40,9 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<bool> _submit() async {
     final value = double.tryParse(_valueController.text.trim());
-    if (value == null) return;
-    setState(() => _isSubmitting = true);
+    if (value == null) return false;
     final unit = _metrics[_selectedMetric]!.$2;
     try {
       await ref.read(vitalsServiceProvider).logVital(
@@ -53,13 +52,12 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
             source: VitalSource.manual,
           );
       ref.invalidate(vitalTrendProvider(_selectedMetric));
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
+      }
+      return false;
     }
   }
 
@@ -97,11 +95,13 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: _isSubmitting ? null : _submit,
-              child: _isSubmitting
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Save'),
+            child: AnimatedConfirmButton(
+              label: 'Save',
+              successLabel: 'Saved',
+              onPressed: _submit,
+              onSuccessComplete: () {
+                if (mounted) Navigator.of(context).pop();
+              },
             ),
           ),
         ],

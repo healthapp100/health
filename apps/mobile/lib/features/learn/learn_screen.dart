@@ -11,6 +11,7 @@ import '../../core/widgets/design_system.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/content.dart';
+import '../../services/content_service.dart';
 import 'learn_providers.dart';
 
 /// Health Knowledge Library + Blogs + Online Seminars — BLUEPRINT.md §5.1's 20+ topic list.
@@ -99,9 +100,6 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
 
   Widget _buildArticlesTab() {
     final isSearching = _searchQuery.length >= 2;
-    final articlesAsync = isSearching
-        ? ref.watch(articleSearchProvider(_searchQuery))
-        : ref.watch(articlesProvider(_selectedCategory));
 
     return Column(
       children: [
@@ -154,33 +152,10 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
           ),
         if (!isSearching) const SizedBox(height: 8),
         Expanded(
-          child: articlesAsync.when(
-            data: (articles) => AsyncListView<HealthArticle>(
-              data: articles,
-              error: null,
-              isLoading: false,
-              emptyIcon: isSearching ? Icons.search_off : Icons.menu_book_outlined,
-              emptyTitle: isSearching ? 'No articles match "$_searchQuery"' : 'No articles in this category yet',
-              itemBuilder: (context, article, index) => AnimatedListEntry(
-                index: index,
-                child: Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: ListTile(
-                    title: Text(article.title),
-                    subtitle: article.summary != null
-                        ? Text(article.summary!, maxLines: 2, overflow: TextOverflow.ellipsis)
-                        : null,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/learn/article/${article.slug}'),
-                  ),
-                ),
-              ),
-            ),
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SkeletonList(count: 4),
-            ),
-            error: (e, _) => ErrorState(message: '$e'),
+          child: _PaginatedArticlesList(
+            key: ValueKey('${_selectedCategory ?? 'all'}|$_searchQuery'),
+            category: _selectedCategory,
+            searchQuery: isSearching ? _searchQuery : null,
           ),
         ),
       ],
@@ -241,6 +216,126 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         child: SkeletonList(count: 3),
       ),
       error: (e, _) => ErrorState(message: '$e'),
+    );
+  }
+}
+
+/// Page-based article list — a category or search result set isn't bounded, so this fetches
+/// [ContentService.defaultPageSize] rows at a time and appends more only when the user actually
+/// scrolls near the bottom, rather than pulling an entire category into memory up front. Keyed by
+/// category+query at the call site so Flutter tears down and recreates this State (resetting
+/// pagination) whenever either changes, instead of hand-written reset logic.
+class _PaginatedArticlesList extends ConsumerStatefulWidget {
+  final String? category;
+  final String? searchQuery;
+  const _PaginatedArticlesList({super.key, this.category, this.searchQuery});
+
+  @override
+  ConsumerState<_PaginatedArticlesList> createState() => _PaginatedArticlesListState();
+}
+
+class _PaginatedArticlesListState extends ConsumerState<_PaginatedArticlesList> {
+  final _scrollController = ScrollController();
+  final List<HealthArticle> _articles = [];
+  bool _isLoadingInitial = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _loadPage();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _isLoadingMore) return;
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent - 400) {
+      _loadPage();
+    }
+  }
+
+  Future<void> _loadPage() async {
+    setState(() {
+      if (_articles.isEmpty) {
+        _isLoadingInitial = true;
+      } else {
+        _isLoadingMore = true;
+      }
+      _error = null;
+    });
+    try {
+      final service = ref.read(contentServiceProvider);
+      final page = widget.searchQuery != null
+          ? await service.searchArticles(widget.searchQuery!, offset: _articles.length)
+          : await service.getArticles(category: widget.category, offset: _articles.length);
+      if (!mounted) return;
+      setState(() {
+        _articles.addAll(page);
+        _hasMore = page.length == ContentService.defaultPageSize;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e);
+    } finally {
+      if (mounted) setState(() => _isLoadingInitial = _isLoadingMore = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoadingInitial) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: SkeletonList(count: 4),
+      );
+    }
+    if (_error != null && _articles.isEmpty) {
+      return ErrorState(message: '$_error', onRetry: _loadPage);
+    }
+    if (_articles.isEmpty) {
+      return EmptyState(
+        icon: widget.searchQuery != null ? Icons.search_off : Icons.menu_book_outlined,
+        title: widget.searchQuery != null
+            ? 'No articles match "${widget.searchQuery}"'
+            : 'No articles in this category yet',
+      );
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: _articles.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= _articles.length) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+        final article = _articles[index];
+        return AnimatedListEntry(
+          index: index,
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              title: Text(article.title),
+              subtitle: article.summary != null
+                  ? Text(article.summary!, maxLines: 2, overflow: TextOverflow.ellipsis)
+                  : null,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/learn/article/${article.slug}'),
+            ),
+          ),
+        );
+      },
     );
   }
 }

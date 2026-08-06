@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../widgets/offline_banner.dart';
 import '../widgets/responsive.dart';
 
 /// The 5-destination nav shell (ARCHITECTURE.md §Navigation shell) — Home / Care / Learn / Track
@@ -12,7 +14,7 @@ import '../widgets/responsive.dart';
 /// (tablet/desktop) — a bottom bar stretched across a 1280px-wide desktop window is both an
 /// unreachable-by-thumb pattern (irrelevant on desktop) and wastes the vertical space a side rail
 /// uses instead.
-class ScaffoldWithNav extends StatelessWidget {
+class ScaffoldWithNav extends ConsumerWidget {
   final StatefulNavigationShell shell;
   const ScaffoldWithNav({super.key, required this.shell});
 
@@ -27,10 +29,15 @@ class ScaffoldWithNav extends StatelessWidget {
   void _onSelect(int index) => shell.goBranch(index, initialLocation: index == shell.currentIndex);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (isCompact(context)) {
       return Scaffold(
-        body: shell,
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(child: shell),
+          ],
+        ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: shell.currentIndex,
           destinations: [
@@ -59,7 +66,14 @@ class ScaffoldWithNav extends StatelessWidget {
             ],
           ),
           const VerticalDivider(width: 1),
-          Expanded(child: shell),
+          Expanded(
+            child: Column(
+              children: [
+                const OfflineBanner(),
+                Expanded(child: shell),
+              ],
+            ),
+          ),
         ],
       ),
     );

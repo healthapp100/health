@@ -31,6 +31,19 @@ class MealPlanService {
         .order('plan_date', ascending: false);
     return (rows as List<dynamic>).map((r) => MealPlan.fromJson(r as Map<String, dynamic>)).toList();
   }
+
+  /// Live view of recent plans so a coach publishing today's plan reaches the patient without a
+  /// manual refresh — filtered to `patient_id` only (supabase_flutter's `.stream()` chains a
+  /// single filter reliably), with the date-range narrowing done client-side by the caller.
+  Stream<List<MealPlan>> watchOwnPlans({int limit = 30}) {
+    return _client
+        .from('meal_plans')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', _patientId)
+        .order('plan_date', ascending: false)
+        .limit(limit)
+        .map((rows) => rows.map(MealPlan.fromJson).toList());
+  }
 }
 
 /// Medicine Support — reminders/adherence only (public.medicine_reminders). Deliberately no
@@ -69,5 +82,17 @@ class MedicineReminderService {
         .update({'active': active})
         .eq('id', reminderId)
         .eq('patient_id', _patientId);
+  }
+
+  /// Live view of all of the patient's own reminders — the caller filters to `active` client-side
+  /// (this lets a reminder that just got deactivated disappear immediately from "active" lists
+  /// without waiting on a refetch, and reappear immediately if reactivated from elsewhere).
+  Stream<List<MedicineReminder>> watchOwnReminders() {
+    return _client
+        .from('medicine_reminders')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', _patientId)
+        .order('medicine_name')
+        .map((rows) => rows.map(MedicineReminder.fromJson).toList());
   }
 }

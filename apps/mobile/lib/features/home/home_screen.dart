@@ -38,11 +38,12 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
+          // These are all Realtime streams now — pull-to-refresh re-establishes the
+          // subscriptions (useful after being backgrounded/offline) rather than one-shot refetches.
           onRefresh: () async {
             ref.invalidate(upcomingAppointmentsProvider);
             ref.invalidate(upcomingMonitoringCallsProvider);
-            ref.invalidate(latestVitalsProvider);
-            ref.invalidate(vitalTrendProvider);
+            ref.invalidate(ownVitalsStreamProvider);
           },
           child: ResponsiveContent(
             child: ListView(

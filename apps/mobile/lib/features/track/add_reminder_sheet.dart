@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
 import '../../models/meal_plan.dart';
-import 'track_providers.dart';
 
 const _allDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -56,7 +55,7 @@ class _AddReminderSheetState extends ConsumerState<_AddReminderSheet> {
               active: true,
             ),
           );
-      ref.invalidate(activeRemindersProvider);
+      // No manual invalidation needed — ownRemindersStreamProvider is a Realtime subscription.
       return true;
     } catch (e) {
       if (mounted) {

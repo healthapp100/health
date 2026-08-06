@@ -277,7 +277,7 @@ class _RemindersCard extends ConsumerWidget {
                                 await ref
                                     .read(medicineReminderServiceProvider)
                                     .setActive(r.id, value);
-                                ref.invalidate(activeRemindersProvider);
+                                // ownRemindersStreamProvider picks up the change via Realtime.
                               } catch (e) {
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context)

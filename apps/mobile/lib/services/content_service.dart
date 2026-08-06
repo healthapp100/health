@@ -9,12 +9,24 @@ class ContentService {
   final SupabaseClient _client;
   const ContentService(this._client);
 
-  Future<List<HealthArticle>> getArticles({String? category, String contentType = 'article'}) async {
+  /// Page-based (not unbounded) — a category with hundreds of articles should never pull them
+  /// all into memory at once. Callers page through via [offset]; [pageSize] rows are requested,
+  /// so the caller can tell "more exist" from `results.length == pageSize`.
+  static const defaultPageSize = 20;
+
+  Future<List<HealthArticle>> getArticles({
+    String? category,
+    String contentType = 'article',
+    int offset = 0,
+    int pageSize = defaultPageSize,
+  }) async {
     var query = _client.from('health_articles').select().eq('content_type', contentType);
     if (category != null) {
       query = query.eq('category', category);
     }
-    final rows = await query.order('published_at', ascending: false);
+    final rows = await query
+        .order('published_at', ascending: false)
+        .range(offset, offset + pageSize - 1);
     return (rows as List<dynamic>)
         .map((r) => HealthArticle.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -23,14 +35,20 @@ class ContentService {
   /// Free-text search across title/summary — powers the Learn tab's search-first browsing
   /// (replacing a wall of 22 always-visible category chips with search + a handful of curated
   /// categories, per the world-class-redesign research pass).
-  Future<List<HealthArticle>> searchArticles(String query, {String contentType = 'article'}) async {
+  Future<List<HealthArticle>> searchArticles(
+    String query, {
+    String contentType = 'article',
+    int offset = 0,
+    int pageSize = defaultPageSize,
+  }) async {
     final escaped = query.replaceAll('%', '');
     final rows = await _client
         .from('health_articles')
         .select()
         .eq('content_type', contentType)
         .or('title.ilike.%$escaped%,summary.ilike.%$escaped%')
-        .order('published_at', ascending: false);
+        .order('published_at', ascending: false)
+        .range(offset, offset + pageSize - 1);
     return (rows as List<dynamic>)
         .map((r) => HealthArticle.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -41,23 +59,16 @@ class ContentService {
     return HealthArticle.fromJson(row);
   }
 
-  Future<List<Seminar>> getUpcomingSeminars() async {
-    final rows = await _client
+  /// Live view of all seminars, newest-scheduled first — the caller splits into upcoming/past
+  /// client-side (no per-patient filter needed here since `seminars: public read all` has no
+  /// row-level scoping), so a newly-published seminar or an added recording appears without a
+  /// manual refresh.
+  Stream<List<Seminar>> watchAllSeminars() {
+    return _client
         .from('seminars')
-        .select()
-        .gte('scheduled_at', DateTime.now().toUtc().toIso8601String())
-        .order('scheduled_at');
-    return (rows as List<dynamic>).map((r) => Seminar.fromJson(r as Map<String, dynamic>)).toList();
-  }
-
-  Future<List<Seminar>> getPastSeminarsWithRecordings() async {
-    final rows = await _client
-        .from('seminars')
-        .select()
-        .lt('scheduled_at', DateTime.now().toUtc().toIso8601String())
-        .not('recording_url', 'is', null)
-        .order('scheduled_at', ascending: false);
-    return (rows as List<dynamic>).map((r) => Seminar.fromJson(r as Map<String, dynamic>)).toList();
+        .stream(primaryKey: ['id'])
+        .order('scheduled_at', ascending: false)
+        .map((rows) => rows.map(Seminar.fromJson).toList());
   }
 
   Future<void> registerForSeminar(String seminarId) async {

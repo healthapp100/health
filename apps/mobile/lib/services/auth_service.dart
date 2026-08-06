@@ -95,5 +95,20 @@ class AuthService {
     return _client.auth.resetPasswordForEmail(email);
   }
 
-  Future<void> signOut() => _client.auth.signOut();
+  /// Supabase's `AuthChangeEvent.signedOut` fires both when the user taps "Sign out" AND when a
+  /// token refresh fails (session actually expired) — the SDK gives no way to tell them apart
+  /// from the event alone. This flag lets whoever calls [signOut] mark the next `signedOut` event
+  /// as intentional, so the app-wide listener (main.dart) only shows a "session expired" message
+  /// for the unexpected case.
+  static bool _expectedSignOut = false;
+  static bool consumeExpectedSignOut() {
+    final was = _expectedSignOut;
+    _expectedSignOut = false;
+    return was;
+  }
+
+  Future<void> signOut() {
+    _expectedSignOut = true;
+    return _client.auth.signOut();
+  }
 }

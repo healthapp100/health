@@ -9,12 +9,14 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/lab.dart';
 
-final _ownLabOrdersProvider = FutureProvider.autoDispose<List<LabOrder>>((ref) {
-  return ref.watch(labServiceProvider).getOwnOrders();
+// Realtime streams — a lab-staff status update or new result upload reaches the patient
+// without a manual refresh.
+final _ownLabOrdersProvider = StreamProvider.autoDispose<List<LabOrder>>((ref) {
+  return ref.watch(labServiceProvider).watchOwnOrders();
 });
 
-final _ownLabResultsProvider = FutureProvider.autoDispose<List<LabResult>>((ref) {
-  return ref.watch(labServiceProvider).getOwnResults();
+final _ownLabResultsProvider = StreamProvider.autoDispose<List<LabResult>>((ref) {
+  return ref.watch(labServiceProvider).watchOwnResults();
 });
 
 /// Laboratory Test Support + the "digital health-records vault" (BLUEPRINT.md §4.3) — booking

@@ -70,15 +70,27 @@ class VitalDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text('History', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ...points.reversed.map(
-                (v) => Card(
-                  child: ListTile(
-                    title: Text('${v.value.toStringAsFixed(1)} ${v.unit}'),
-                    subtitle: Text(DateFormat('EEE, d MMM · h:mm a').format(v.recordedAt)),
+              // The underlying stream is already capped (500 rows across all metrics — see
+              // VitalsService.watchOwnVitals), but render only the most recent 100 of *this*
+              // metric so a long-tracked patient's history list doesn't grow unbounded on screen.
+              if (points.length > 100)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 4),
+                  child: Text(
+                    'Showing the latest 100 of ${points.length} readings',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-              ),
+                )
+              else
+                const SizedBox(height: 8),
+              ...points.reversed.take(100).map(
+                    (v) => Card(
+                      child: ListTile(
+                        title: Text('${v.value.toStringAsFixed(1)} ${v.unit}'),
+                        subtitle: Text(DateFormat('EEE, d MMM · h:mm a').format(v.recordedAt)),
+                      ),
+                    ),
+                  ),
             ],
           );
         },

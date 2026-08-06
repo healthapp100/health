@@ -5,7 +5,6 @@ import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
 import '../../models/enums.dart';
 import '../../models/vital.dart';
-import 'track_providers.dart';
 
 Future<void> showLogVitalSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet(
@@ -51,7 +50,8 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
             unit: unit,
             source: VitalSource.manual,
           );
-      ref.invalidate(vitalTrendProvider(_selectedMetric));
+      // No manual invalidation needed — ownVitalsStreamProvider is a Realtime subscription that
+      // picks up the new row on its own.
       return true;
     } catch (e) {
       if (mounted) {

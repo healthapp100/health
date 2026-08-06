@@ -58,4 +58,18 @@ class VitalsService {
     final list = rows as List<dynamic>;
     return list.isEmpty ? null : Vital.fromJson(list.first as Map<String, dynamic>);
   }
+
+  /// Live view of the patient's own vitals across all metric types in one subscription (rather
+  /// than one Realtime channel per metric) — a device/lab-sourced reading landing (or a patient
+  /// logging one from another device) reaches every screen watching it without a manual refresh.
+  /// Per-metric trend/latest are derived from this client-side (see track_providers.dart).
+  Stream<List<Vital>> watchOwnVitals({int limit = 500}) {
+    return _client
+        .from('vitals')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', _patientId)
+        .order('recorded_at', ascending: false)
+        .limit(limit)
+        .map((rows) => rows.map(Vital.fromJson).toList());
+  }
 }

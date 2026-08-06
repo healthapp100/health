@@ -30,4 +30,24 @@ class LabService {
         .order('reported_at', ascending: false);
     return (rows as List<dynamic>).map((r) => LabResult.fromJson(r as Map<String, dynamic>)).toList();
   }
+
+  /// Live views so a lab-staff status update (sample collected → in lab → reported) or a new
+  /// result upload reaches the patient without a manual refresh.
+  Stream<List<LabOrder>> watchOwnOrders() {
+    return _client
+        .from('lab_orders')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', _patientId)
+        .order('created_at', ascending: false)
+        .map((rows) => rows.map(LabOrder.fromJson).toList());
+  }
+
+  Stream<List<LabResult>> watchOwnResults() {
+    return _client
+        .from('lab_results')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', _patientId)
+        .order('reported_at', ascending: false)
+        .map((rows) => rows.map(LabResult.fromJson).toList());
+  }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/offline/offline_queue_provider.dart';
+import '../../core/providers/connectivity_provider.dart';
 import '../../core/providers/service_providers.dart';
 import '../../core/widgets/design_system.dart';
 import '../../models/enums.dart';
@@ -43,17 +45,38 @@ class _LogVitalSheetState extends ConsumerState<_LogVitalSheet> {
     final value = double.tryParse(_valueController.text.trim());
     if (value == null) return false;
     final unit = _metrics[_selectedMetric]!.$2;
+    final recordedAt = DateTime.now();
     try {
       await ref.read(vitalsServiceProvider).logVital(
             metricType: _selectedMetric,
             value: value,
             unit: unit,
             source: VitalSource.manual,
+            recordedAt: recordedAt,
           );
       // No manual invalidation needed — ownVitalsStreamProvider is a Realtime subscription that
       // picks up the new row on its own.
       return true;
     } catch (e) {
+      final queue = ref.read(offlineQueueServiceProvider);
+      final isOffline = ref.read(isOfflineProvider).valueOrNull ?? false;
+      // Only queue for later if the failure actually looks like "no network" — a real server
+      // error (bad request, RLS denial) queued for retry would just fail identically forever.
+      if (queue.isSupported && isOffline) {
+        await queue.enqueue(OfflineOp.logVital, {
+          'metricType': _selectedMetric,
+          'value': value,
+          'unit': unit,
+          'source': VitalSource.manual.wireValue,
+          'recordedAt': recordedAt.toUtc().toIso8601String(),
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Saved offline — it'll sync once you're back online")),
+          );
+        }
+        return true;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
       }

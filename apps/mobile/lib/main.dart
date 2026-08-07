@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/offline/offline_queue_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/supabase/supabase_client.dart';
 import 'core/theme/app_theme.dart';
@@ -33,6 +34,10 @@ class HealthcarePlatformApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+
+    // Constructs the offline-write-queue processor exactly once (see its own doc comment for
+    // why watching it here, rather than instantiating it directly, matters).
+    ref.watch(offlineQueueProcessorProvider);
 
     // The router's own redirect already sends a signed-out user back to /auth/phone (see
     // app_router.dart) — this listener adds the missing piece: telling them *why*, distinguishing

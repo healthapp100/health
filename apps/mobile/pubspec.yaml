@@ -43,6 +43,7 @@ dependencies:
 
   # Offline-first local store + sync queue for patchy-connectivity resilience — BLUEPRINT.md §2.1
   sqflite: ^2.3.3
+  path: ^1.9.0
   connectivity_plus: ^6.0.5
 
   # Vitals trend charts (blood glucose, BP, weight over time)
@@ -67,8 +68,34 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/icon/icon.png
+
+# Generates android/ios/web launcher icons from the one source image (tool/generate_icon.dart's
+# output) — run `dart run flutter_launcher_icons` after regenerating that source image.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon.png"
+  web:
+    generate: true
+    background_color: "#1D6F63"
+    theme_color: "#1D6F63"
+  min_sdk_android: 21
+
+# Generates the native splash screen shown while Flutter's engine initializes — run
+# `dart run flutter_native_splash:create` after regenerating the source image.
+flutter_native_splash:
+  color: "#1D6F63"
+  image: "assets/icon/icon.png"
+  android_12:
+    color: "#1D6F63"
+    image: "assets/icon/icon.png"
+  web: false

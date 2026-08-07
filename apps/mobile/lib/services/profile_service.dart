@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
@@ -5,6 +7,20 @@ import '../models/profile.dart';
 class ProfileService {
   final SupabaseClient _client;
   const ProfileService(this._client);
+
+  /// Uploads to `avatars/{userId}/{timestamp}.{ext}` (0012's RLS scopes writes to your own
+  /// folder) and returns the public URL — the caller still has to save it onto the profile via
+  /// [updateOwnProfile]; this method only handles the file, not the profile row.
+  Future<String> uploadAvatar(Uint8List bytes, {required String fileExt}) async {
+    final userId = _client.auth.currentUser!.id;
+    final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+    await _client.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: true),
+        );
+    return _client.storage.from('avatars').getPublicUrl(path);
+  }
 
   Future<Profile> getOwnProfile() async {
     final userId = _client.auth.currentUser!.id;
@@ -54,5 +70,14 @@ class ProfileService {
       'relationship': relationship,
       if (dependentProfileId != null) 'dependent_profile_id': dependentProfileId,
     });
+  }
+
+  Future<void> removeDependent(String careRelationshipId) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client
+        .from('care_relationships')
+        .delete()
+        .eq('id', careRelationshipId)
+        .eq('guardian_profile_id', userId);
   }
 }

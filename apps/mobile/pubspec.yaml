@@ -59,6 +59,10 @@ dependencies:
   # Formatting (dates, tabular numeric display for lab values per BLUEPRINT.md §4.4)
   intl: ^0.19.0
 
+  # Renders Learn/article body_markdown as actual formatted text (headings, lists, links)
+  # instead of a wall of raw markdown syntax in a plain Text widget.
+  flutter_markdown: ^0.7.4+1
+
   # Environment config (SUPABASE_URL / SUPABASE_ANON_KEY) without committing secrets
   flutter_dotenv: ^5.2.1
 

@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/consent_service.dart';
 import '../../services/content_service.dart';
 import '../../services/lab_service.dart';
+import '../../services/learn_content_service.dart';
 import '../../services/meal_plan_service.dart';
 import '../../services/profile_service.dart';
 import '../../services/vitals_service.dart';
@@ -22,4 +23,6 @@ final medicineReminderServiceProvider =
 final vitalsServiceProvider = Provider((ref) => VitalsService(ref.watch(supabaseClientProvider)));
 final labServiceProvider = Provider((ref) => LabService(ref.watch(supabaseClientProvider)));
 final contentServiceProvider = Provider((ref) => ContentService(ref.watch(supabaseClientProvider)));
+final learnContentServiceProvider =
+    Provider((ref) => LearnContentService(ref.watch(supabaseClientProvider)));
 final consentServiceProvider = Provider((ref) => ConsentService(ref.watch(supabaseClientProvider)));

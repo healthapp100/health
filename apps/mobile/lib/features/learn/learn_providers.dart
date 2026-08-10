@@ -2,6 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/service_providers.dart';
 import '../../models/content.dart';
+import '../../models/learn_topic.dart';
+
+final learnTopicsProvider = StreamProvider.autoDispose<List<LearnTopic>>((ref) {
+  return ref.watch(learnContentServiceProvider).watchPublishedTopics();
+});
+
+final learnSubtopicsProvider =
+    StreamProvider.autoDispose.family<List<LearnSubtopic>, String>((ref, topicId) {
+  return ref.watch(learnContentServiceProvider).watchPublishedSubtopics(topicId);
+});
+
+final learnTopicByIdProvider =
+    FutureProvider.autoDispose.family<LearnTopic, String>((ref, topicId) {
+  return ref.watch(learnContentServiceProvider).getTopicById(topicId);
+});
 
 // Articles are paginated (see _PaginatedArticlesList in learn_screen.dart) rather than a plain
 // FutureProvider, since a category/search result set isn't bounded — a category with hundreds

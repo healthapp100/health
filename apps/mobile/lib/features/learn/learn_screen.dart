@@ -13,6 +13,7 @@ import '../../core/widgets/state_widgets.dart';
 import '../../models/content.dart';
 import '../../services/content_service.dart';
 import 'learn_providers.dart';
+import 'learn_topics_tab.dart';
 
 /// Health Knowledge Library + Blogs + Online Seminars — BLUEPRINT.md §5.1's 20+ topic list.
 /// Redesigned search-first: a 22-item always-visible chip scroller forces users to scan
@@ -47,7 +48,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -86,13 +87,24 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
         title: const Text('Learn'),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [Tab(text: 'Articles'), Tab(text: 'Seminars'), Tab(text: 'Past recordings')],
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'Topics'),
+            Tab(text: 'Articles'),
+            Tab(text: 'Seminars'),
+            Tab(text: 'Past recordings'),
+          ],
         ),
       ),
       body: ResponsiveContent(
         child: TabBarView(
           controller: _tabController,
-          children: [_buildArticlesTab(), _buildSeminarsTab(), _buildPastSeminarsTab()],
+          children: [
+            const LearnTopicsTab(),
+            _buildArticlesTab(),
+            _buildSeminarsTab(),
+            _buildPastSeminarsTab(),
+          ],
         ),
       ),
     );
@@ -144,7 +156,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.tune, size: 16),
-                  label: const Text('All topics'),
+                  label: const Text('All categories'),
                   onPressed: _openAllTopics,
                 ),
               ],
@@ -355,7 +367,7 @@ class _AllTopicsSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('All topics', style: Theme.of(context).textTheme.titleLarge),
+            Text('All categories', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             Expanded(
               child: GridView.builder(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/state_widgets.dart';
@@ -23,7 +24,7 @@ class ArticleDetailScreen extends ConsumerWidget {
           children: [
             Text(article.title, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 16),
-            Text(article.bodyMarkdown, style: Theme.of(context).textTheme.bodyLarge),
+            MarkdownBody(data: article.bodyMarkdown),
             const SizedBox(height: 24),
             Card(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,

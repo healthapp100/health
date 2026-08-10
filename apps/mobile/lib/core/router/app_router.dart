@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/admin_shell.dart';
+import '../../features/admin/learn_cms/admin_learn_topics_screen.dart';
 import '../../features/auth/auth_contact.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
@@ -10,9 +12,13 @@ import '../../features/home/home_screen.dart';
 import '../../features/labs/labs_screen.dart';
 import '../../features/learn/article_detail_screen.dart';
 import '../../features/learn/learn_screen.dart';
+import '../../features/learn/learn_topics_tab.dart';
+import '../../features/learn/subtopic_content_screen.dart';
 import '../../features/onboarding/consent_screen.dart';
+import '../../features/profile/profile_providers.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/track/track_screen.dart';
+import '../../models/enums.dart';
 import '../supabase/supabase_client.dart';
 import 'scaffold_with_nav.dart';
 
@@ -45,6 +51,17 @@ CustomTransitionPage<void> _fadeSlidePage(Widget child) {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
+  final signedInAtBuild = authState.valueOrNull?.session != null ||
+      ref.read(supabaseClientProvider).auth.currentSession != null;
+  // Only watch the profile once actually signed in — ownProfileProvider calls
+  // `auth.currentUser!.id`, which throws on a null user, so watching it unconditionally would
+  // crash router construction on a cold, signed-out start. Watching (not reading) here means the
+  // router rebuilds — and redirect() re-runs — the moment the profile finishes loading, so an
+  // admin isn't stuck on the patient shell just because their role wasn't known yet at the first
+  // navigation attempt.
+  if (signedInAtBuild) {
+    ref.watch(ownProfileProvider);
+  }
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -54,9 +71,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           ref.read(supabaseClientProvider).auth.currentSession != null;
       final onAuthRoute = state.matchedLocation.startsWith('/auth') ||
           state.matchedLocation.startsWith('/onboarding');
+      final onAdminRoute = state.matchedLocation.startsWith('/admin');
 
       if (!signedIn && !onAuthRoute) return '/auth/phone';
-      if (signedIn && state.matchedLocation.startsWith('/auth')) return '/home';
+      if (!signedIn) return null;
+
+      AppRole? role;
+      final profileState = ref.read(ownProfileProvider);
+      role = profileState.valueOrNull?.role;
+      final isAdmin = role == AppRole.admin || role == AppRole.superAdmin;
+
+      if (onAuthRoute) return isAdmin ? '/admin' : '/home';
+      if (isAdmin && !onAdminRoute) return '/admin';
+      if (!isAdmin && onAdminRoute) return '/home';
       return null;
     },
     routes: [
@@ -75,6 +102,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/learn/article/:slug',
         pageBuilder: (context, state) =>
             _fadeSlidePage(ArticleDetailScreen(slug: state.pathParameters['slug']!)),
+      ),
+      GoRoute(
+        path: '/learn/topic/:topicId',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          TopicSubtopicListScreen(topicId: state.pathParameters['topicId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/learn/topic/:topicId/:subtopicId',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          SubtopicContentScreen(
+            topicId: state.pathParameters['topicId']!,
+            subtopicId: state.pathParameters['subtopicId']!,
+          ),
+        ),
+      ),
+      ShellRoute(
+        builder: (context, state, child) => AdminShell(child: child),
+        routes: [
+          GoRoute(path: '/admin', builder: (context, state) => const AdminHomeScreen()),
+          GoRoute(
+            path: '/admin/learn',
+            builder: (context, state) => const AdminLearnTopicsScreen(),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => ScaffoldWithNav(shell: navigationShell),

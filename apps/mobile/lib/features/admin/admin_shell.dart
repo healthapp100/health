@@ -22,6 +22,8 @@ class AdminShell extends ConsumerWidget {
   static const _sections = [
     (Icons.dashboard_outlined, Icons.dashboard, 'Dashboard', '/admin'),
     (Icons.menu_book_outlined, Icons.menu_book, 'Learn', '/admin/learn'),
+    (Icons.article_outlined, Icons.article, 'Blogs', '/admin/blogs'),
+    (Icons.event_outlined, Icons.event, 'Seminars', '/admin/seminars'),
   ];
 
   @override

@@ -59,6 +59,62 @@ class ContentService {
     return HealthArticle.fromJson(row);
   }
 
+  /// Featured strip shown at the top of the Blogs section — small and un-paginated by design
+  /// (an editorial highlight list is meant to stay short; if it ever needs paging, that's a
+  /// product-scope change, not just a query-shape one).
+  Future<List<HealthArticle>> getFeaturedArticles({String contentType = 'blog'}) async {
+    final rows = await _client
+        .from('health_articles')
+        .select()
+        .eq('content_type', contentType)
+        .eq('featured', true)
+        .order('published_at', ascending: false)
+        .limit(10);
+    return (rows as List<dynamic>)
+        .map((r) => HealthArticle.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  // ---- Admin: authoring (blogs/articles/news share this one table+form) ----
+
+  String get _userId => _client.auth.currentUser!.id;
+
+  Stream<List<HealthArticle>> watchAllArticlesForAdmin({String? contentType}) {
+    var query = _client.from('health_articles').stream(primaryKey: ['id']);
+    return query
+        .order('created_at', ascending: false)
+        .map(
+          (rows) => rows
+              .map(HealthArticle.fromJson)
+              .where((a) => contentType == null || a.contentType == contentType)
+              .toList(),
+        );
+  }
+
+  Future<HealthArticle> createArticle(HealthArticle article) async {
+    final row = await _client
+        .from('health_articles')
+        .insert(article.toInsertJson(_userId))
+        .select()
+        .single();
+    return HealthArticle.fromJson(row);
+  }
+
+  Future<void> updateArticle(String id, HealthArticle article) async {
+    await _client.from('health_articles').update(article.toUpdateJson()).eq('id', id);
+  }
+
+  Future<void> deleteArticle(String id) async {
+    await _client.from('health_articles').delete().eq('id', id);
+  }
+
+  Future<void> setPublished(String id, bool published) async {
+    await _client
+        .from('health_articles')
+        .update({'published_at': published ? DateTime.now().toUtc().toIso8601String() : null})
+        .eq('id', id);
+  }
+
   /// Live view of all seminars, newest-scheduled first — the caller splits into upcoming/past
   /// client-side (no per-patient filter needed here since `seminars: public read all` has no
   /// row-level scoping), so a newly-published seminar or an added recording appears without a
@@ -71,7 +127,18 @@ class ContentService {
         .map((rows) => rows.map(Seminar.fromJson).toList());
   }
 
-  Future<void> registerForSeminar(String seminarId) async {
+  /// [registrationLimit] is checked client-side before the insert — not airtight against a
+  /// last-second race between two patients registering simultaneously (that would need a
+  /// database-level check constraint or trigger), but sufficient at this app's registration
+  /// volume, and consistent with how reordering elsewhere in this codebase favors a simple
+  /// client-side approach over heavier server-side guarantees.
+  Future<void> registerForSeminar(String seminarId, {int? registrationLimit}) async {
+    if (registrationLimit != null) {
+      final current = await getRegistrationCount(seminarId);
+      if (current >= registrationLimit) {
+        throw StateError('This seminar is fully booked.');
+      }
+    }
     final patientId = _client.auth.currentUser!.id;
     await _client.from('seminar_registrations').insert({
       'seminar_id': seminarId,
@@ -97,5 +164,32 @@ class ContentService {
         .delete()
         .eq('seminar_id', seminarId)
         .eq('patient_id', patientId);
+  }
+
+  Future<int> getRegistrationCount(String seminarId) async {
+    final rows = await _client
+        .from('seminar_registrations')
+        .select('id')
+        .eq('seminar_id', seminarId);
+    return (rows as List<dynamic>).length;
+  }
+
+  // ---- Admin: seminar authoring ----
+
+  Future<Seminar> createSeminar(Seminar seminar) async {
+    final row = await _client
+        .from('seminars')
+        .insert(seminar.toInsertJson(_userId))
+        .select()
+        .single();
+    return Seminar.fromJson(row);
+  }
+
+  Future<void> updateSeminar(String id, Seminar seminar) async {
+    await _client.from('seminars').update(seminar.toUpdateJson()).eq('id', id);
+  }
+
+  Future<void> deleteSeminar(String id) async {
+    await _client.from('seminars').delete().eq('id', id);
   }
 }

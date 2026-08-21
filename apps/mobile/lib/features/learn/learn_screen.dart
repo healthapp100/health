@@ -48,7 +48,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -90,6 +90,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
           isScrollable: true,
           tabs: const [
             Tab(text: 'Topics'),
+            Tab(text: 'Blogs'),
             Tab(text: 'Articles'),
             Tab(text: 'Seminars'),
             Tab(text: 'Past recordings'),
@@ -101,6 +102,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
           controller: _tabController,
           children: [
             const LearnTopicsTab(),
+            const _BlogsTab(),
             _buildArticlesTab(),
             _buildSeminarsTab(),
             _buildPastSeminarsTab(),
@@ -240,7 +242,13 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
 class _PaginatedArticlesList extends ConsumerStatefulWidget {
   final String? category;
   final String? searchQuery;
-  const _PaginatedArticlesList({super.key, this.category, this.searchQuery});
+  final String contentType;
+  const _PaginatedArticlesList({
+    super.key,
+    this.category,
+    this.searchQuery,
+    this.contentType = 'article',
+  });
 
   @override
   ConsumerState<_PaginatedArticlesList> createState() => _PaginatedArticlesListState();
@@ -288,8 +296,16 @@ class _PaginatedArticlesListState extends ConsumerState<_PaginatedArticlesList> 
     try {
       final service = ref.read(contentServiceProvider);
       final page = widget.searchQuery != null
-          ? await service.searchArticles(widget.searchQuery!, offset: _articles.length)
-          : await service.getArticles(category: widget.category, offset: _articles.length);
+          ? await service.searchArticles(
+              widget.searchQuery!,
+              contentType: widget.contentType,
+              offset: _articles.length,
+            )
+          : await service.getArticles(
+              category: widget.category,
+              contentType: widget.contentType,
+              offset: _articles.length,
+            );
       if (!mounted) return;
       setState(() {
         _articles.addAll(page);
@@ -352,6 +368,103 @@ class _PaginatedArticlesListState extends ConsumerState<_PaginatedArticlesList> 
   }
 }
 
+/// Blogs & Articles module: a Featured strip (editorial highlights, `featured = true`) above
+/// the plain reverse-chronological list — "Daily Blog" is simply whatever's newest by
+/// `published_at`, so no separate "daily" query/flag is needed beyond the existing ordering.
+class _BlogsTab extends ConsumerWidget {
+  const _BlogsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final featuredAsync = ref.watch(featuredBlogsProvider);
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: featuredAsync.when(
+            data: (featured) {
+              if (featured.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Featured'),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 140,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: featured.length,
+                        itemBuilder: (context, index) {
+                          final blog = featured[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: SizedBox(
+                              width: 220,
+                              child: Card(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () => context.push('/learn/article/${blog.slug}'),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(Icons.star, size: 16, color: Colors.amber[700]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Featured',
+                                              style: Theme.of(context).textTheme.labelSmall,
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          blog.title,
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (e, _) => const SizedBox.shrink(),
+          ),
+        ),
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('Latest'),
+          ),
+        ),
+        const SliverFillRemaining(
+          child: _PaginatedArticlesList(contentType: 'blog'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AllTopicsSheet extends StatelessWidget {
   final List<String> categories;
   final String? selected;
@@ -408,9 +521,14 @@ class _SeminarTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
+        leading: Icon(seminar.isOnline ? Icons.videocam_outlined : Icons.location_on_outlined),
         title: Text(seminar.title),
         subtitle: Text(
-          '${seminar.speakerName} · ${DateFormat('EEE, d MMM · h:mm a').format(seminar.scheduledAt)}',
+          [
+            seminar.speakerName,
+            DateFormat('EEE, d MMM · h:mm a').format(seminar.scheduledAt),
+            seminar.isOnline ? 'Online' : (seminar.venue ?? 'Offline'),
+          ].join(' · '),
         ),
         trailing: registeredAsync.when(
           data: (isRegistered) => isRegistered
@@ -427,11 +545,22 @@ class _SeminarTile extends ConsumerWidget {
                 )
               : FilledButton(
                   onPressed: () async {
-                    await ref.read(contentServiceProvider).registerForSeminar(seminar.id);
-                    ref.invalidate(seminarRegisteredProvider(seminar.id));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(content: Text('Registered — we’ll remind you')));
+                    try {
+                      await ref.read(contentServiceProvider).registerForSeminar(
+                            seminar.id,
+                            registrationLimit: seminar.registrationLimit,
+                          );
+                      ref.invalidate(seminarRegisteredProvider(seminar.id));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Registered — we’ll remind you')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(content: Text('Could not register. $e')));
+                      }
                     }
                   },
                   child: const Text('Register'),

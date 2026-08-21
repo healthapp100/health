@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/admin_shell.dart';
+import '../../features/admin/blogs/admin_blogs_screen.dart';
 import '../../features/admin/learn_cms/admin_learn_topics_screen.dart';
+import '../../features/admin/seminars/admin_seminars_screen.dart';
 import '../../features/auth/auth_contact.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
@@ -125,6 +127,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/learn',
             builder: (context, state) => const AdminLearnTopicsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/blogs',
+            builder: (context, state) => const AdminBlogsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/seminars',
+            builder: (context, state) => const AdminSeminarsScreen(),
           ),
         ],
       ),

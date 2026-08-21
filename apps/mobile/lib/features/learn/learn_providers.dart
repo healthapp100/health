@@ -13,6 +13,10 @@ final learnSubtopicsProvider =
   return ref.watch(learnContentServiceProvider).watchPublishedSubtopics(topicId);
 });
 
+final featuredBlogsProvider = FutureProvider.autoDispose<List<HealthArticle>>((ref) {
+  return ref.watch(contentServiceProvider).getFeaturedArticles();
+});
+
 final learnTopicByIdProvider =
     FutureProvider.autoDispose.family<LearnTopic, String>((ref, topicId) {
   return ref.watch(learnContentServiceProvider).getTopicById(topicId);

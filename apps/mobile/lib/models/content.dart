@@ -1,5 +1,6 @@
-/// Mirrors public.health_articles (supabase/migrations/0007_content_library.sql) — Health
+/// Mirrors public.health_articles (0007_content_library.sql + 0014_blogs_extend.sql) — Health
 /// Knowledge Library, Blogs, and Medical News all share this one table via `contentType`.
+/// `publishedAt` doubles as scheduled publish: the RLS policy hides a row until that instant.
 class HealthArticle {
   final String id;
   final String slug;
@@ -10,6 +11,10 @@ class HealthArticle {
   final String? summary;
   final String? coverImageUrl;
   final DateTime? publishedAt;
+  final bool featured;
+  final List<String> tags;
+  final String? externalLink;
+  final String? youtubeUrl;
 
   const HealthArticle({
     required this.id,
@@ -21,6 +26,10 @@ class HealthArticle {
     this.summary,
     this.coverImageUrl,
     this.publishedAt,
+    this.featured = false,
+    this.tags = const [],
+    this.externalLink,
+    this.youtubeUrl,
   });
 
   factory HealthArticle.fromJson(Map<String, dynamic> json) => HealthArticle(
@@ -34,10 +43,45 @@ class HealthArticle {
         coverImageUrl: json['cover_image_url'] as String?,
         publishedAt:
             json['published_at'] != null ? DateTime.parse(json['published_at'] as String) : null,
+        featured: json['featured'] as bool? ?? false,
+        tags: ((json['tags'] as List<dynamic>?) ?? []).cast<String>(),
+        externalLink: json['external_link'] as String?,
+        youtubeUrl: json['youtube_url'] as String?,
       );
+
+  Map<String, dynamic> toInsertJson(String creatorId) => {
+        'slug': slug,
+        'title': title,
+        'category': category,
+        'content_type': contentType,
+        'body_markdown': bodyMarkdown,
+        if (summary != null) 'summary': summary,
+        if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
+        if (publishedAt != null) 'published_at': publishedAt!.toUtc().toIso8601String(),
+        'featured': featured,
+        'tags': tags,
+        if (externalLink != null) 'external_link': externalLink,
+        if (youtubeUrl != null) 'youtube_url': youtubeUrl,
+        'created_by': creatorId,
+      };
+
+  Map<String, dynamic> toUpdateJson() => {
+        'slug': slug,
+        'title': title,
+        'category': category,
+        'content_type': contentType,
+        'body_markdown': bodyMarkdown,
+        'summary': summary,
+        'cover_image_url': coverImageUrl,
+        'published_at': publishedAt?.toUtc().toIso8601String(),
+        'featured': featured,
+        'tags': tags,
+        'external_link': externalLink,
+        'youtube_url': youtubeUrl,
+      };
 }
 
-/// Mirrors public.seminars — Online Seminars module.
+/// Mirrors public.seminars (0007 + 0015_seminars_extend.sql) — Online and Offline Seminars.
 class Seminar {
   final String id;
   final String title;
@@ -47,6 +91,14 @@ class Seminar {
   final DateTime scheduledAt;
   final String? joinUrl;
   final String? recordingUrl;
+  final String mode; // 'online' | 'offline'
+  final int? durationMinutes;
+  final String? meetingPassword;
+  final String? venue;
+  final String? bannerUrl;
+  final int? registrationLimit;
+  final String status; // 'scheduled' | 'cancelled' | 'completed'
+  final String? notes;
 
   const Seminar({
     required this.id,
@@ -57,6 +109,14 @@ class Seminar {
     required this.scheduledAt,
     this.joinUrl,
     this.recordingUrl,
+    this.mode = 'online',
+    this.durationMinutes,
+    this.meetingPassword,
+    this.venue,
+    this.bannerUrl,
+    this.registrationLimit,
+    this.status = 'scheduled',
+    this.notes,
   });
 
   factory Seminar.fromJson(Map<String, dynamic> json) => Seminar(
@@ -68,10 +128,56 @@ class Seminar {
         scheduledAt: DateTime.parse(json['scheduled_at'] as String),
         joinUrl: json['join_url'] as String?,
         recordingUrl: json['recording_url'] as String?,
+        mode: json['mode'] as String? ?? 'online',
+        durationMinutes: json['duration_minutes'] as int?,
+        meetingPassword: json['meeting_password'] as String?,
+        venue: json['venue'] as String?,
+        bannerUrl: json['banner_url'] as String?,
+        registrationLimit: json['registration_limit'] as int?,
+        status: json['status'] as String? ?? 'scheduled',
+        notes: json['notes'] as String?,
       );
+
+  Map<String, dynamic> toInsertJson(String creatorId) => {
+        'title': title,
+        if (description != null) 'description': description,
+        'speaker_name': speakerName,
+        if (speakerBio != null) 'speaker_bio': speakerBio,
+        'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+        if (joinUrl != null) 'join_url': joinUrl,
+        if (recordingUrl != null) 'recording_url': recordingUrl,
+        'mode': mode,
+        if (durationMinutes != null) 'duration_minutes': durationMinutes,
+        if (meetingPassword != null) 'meeting_password': meetingPassword,
+        if (venue != null) 'venue': venue,
+        if (bannerUrl != null) 'banner_url': bannerUrl,
+        if (registrationLimit != null) 'registration_limit': registrationLimit,
+        'status': status,
+        if (notes != null) 'notes': notes,
+        'created_by': creatorId,
+      };
+
+  Map<String, dynamic> toUpdateJson() => {
+        'title': title,
+        'description': description,
+        'speaker_name': speakerName,
+        'speaker_bio': speakerBio,
+        'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+        'join_url': joinUrl,
+        'recording_url': recordingUrl,
+        'mode': mode,
+        'duration_minutes': durationMinutes,
+        'meeting_password': meetingPassword,
+        'venue': venue,
+        'banner_url': bannerUrl,
+        'registration_limit': registrationLimit,
+        'status': status,
+        'notes': notes,
+      };
 
   bool get hasRecording => recordingUrl != null && recordingUrl!.isNotEmpty;
   bool get isPast => scheduledAt.isBefore(DateTime.now());
+  bool get isOnline => mode == 'online';
 }
 
 /// Mirrors public.seminar_registrations.

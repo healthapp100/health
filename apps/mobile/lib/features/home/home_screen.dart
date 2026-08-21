@@ -223,6 +223,7 @@ class _QuickActionsRow extends ConsumerWidget {
       (Icons.medical_services_outlined, 'Book a call', () => context.go('/care')),
       (Icons.school_outlined, 'Seminars', () => context.go('/learn')),
       (Icons.science_outlined, 'Lab tests', () => context.go('/labs')),
+      (Icons.apps_outlined, 'Services', () => context.go('/services')),
     ];
     return GridView.count(
       crossAxisCount: 4,

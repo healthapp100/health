@@ -24,6 +24,7 @@ class AdminShell extends ConsumerWidget {
     (Icons.menu_book_outlined, Icons.menu_book, 'Learn', '/admin/learn'),
     (Icons.article_outlined, Icons.article, 'Blogs', '/admin/blogs'),
     (Icons.event_outlined, Icons.event, 'Seminars', '/admin/seminars'),
+    (Icons.apps_outlined, Icons.apps, 'Services', '/admin/services'),
   ];
 
   @override

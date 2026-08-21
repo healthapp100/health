@@ -8,6 +8,7 @@ import '../../services/lab_service.dart';
 import '../../services/learn_content_service.dart';
 import '../../services/meal_plan_service.dart';
 import '../../services/profile_service.dart';
+import '../../services/services_directory_service.dart';
 import '../../services/vitals_service.dart';
 import '../supabase/supabase_client.dart';
 
@@ -26,3 +27,5 @@ final contentServiceProvider = Provider((ref) => ContentService(ref.watch(supaba
 final learnContentServiceProvider =
     Provider((ref) => LearnContentService(ref.watch(supabaseClientProvider)));
 final consentServiceProvider = Provider((ref) => ConsentService(ref.watch(supabaseClientProvider)));
+final servicesDirectoryServiceProvider =
+    Provider((ref) => ServicesDirectoryService(ref.watch(supabaseClientProvider)));

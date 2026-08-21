@@ -6,6 +6,7 @@ import '../../features/admin/admin_shell.dart';
 import '../../features/admin/blogs/admin_blogs_screen.dart';
 import '../../features/admin/learn_cms/admin_learn_topics_screen.dart';
 import '../../features/admin/seminars/admin_seminars_screen.dart';
+import '../../features/admin/services/admin_services_screen.dart';
 import '../../features/auth/auth_contact.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
@@ -19,6 +20,12 @@ import '../../features/learn/subtopic_content_screen.dart';
 import '../../features/onboarding/consent_screen.dart';
 import '../../features/profile/profile_providers.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/services/daily_videos_screen.dart';
+import '../../features/services/health_kits_screen.dart';
+import '../../features/services/lab_directory_screen.dart';
+import '../../features/services/medicines_screen.dart';
+import '../../features/services/monitoring_messages_screen.dart';
+import '../../features/services/services_home_screen.dart';
 import '../../features/track/track_screen.dart';
 import '../../models/enums.dart';
 import '../supabase/supabase_client.dart';
@@ -136,6 +143,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/admin/seminars',
             builder: (context, state) => const AdminSeminarsScreen(),
           ),
+          GoRoute(
+            path: '/admin/services',
+            builder: (context, state) => const AdminServicesScreen(),
+          ),
         ],
       ),
       StatefulShellRoute.indexedStack(
@@ -169,6 +180,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/labs', pageBuilder: (context, state) => _fadeSlidePage(const LabsScreen())),
+      GoRoute(
+        path: '/services',
+        pageBuilder: (context, state) => _fadeSlidePage(const ServicesHomeScreen()),
+      ),
+      GoRoute(
+        path: '/services/monitoring',
+        pageBuilder: (context, state) => _fadeSlidePage(const MonitoringMessagesScreen()),
+      ),
+      GoRoute(
+        path: '/services/videos',
+        pageBuilder: (context, state) => _fadeSlidePage(const DailyVideosScreen()),
+      ),
+      GoRoute(
+        path: '/services/labs-directory',
+        pageBuilder: (context, state) => _fadeSlidePage(const LabDirectoryScreen()),
+      ),
+      GoRoute(
+        path: '/services/health-kits',
+        pageBuilder: (context, state) => _fadeSlidePage(const HealthKitsScreen()),
+      ),
+      GoRoute(
+        path: '/services/medicines',
+        pageBuilder: (context, state) => _fadeSlidePage(const MedicinesScreen()),
+      ),
     ],
   );
 });

@@ -7,6 +7,7 @@ import '../../../core/widgets/design_system.dart';
 import '../../../core/widgets/responsive.dart';
 import '../../../core/widgets/state_widgets.dart';
 import '../../../models/services_models.dart';
+import '../../care/care_providers.dart';
 import 'admin_services_providers.dart';
 
 /// One admin screen with a tab per Services sub-module (Daily Monitoring, Daily Videos, Lab
@@ -27,7 +28,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -50,6 +51,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen>
             Tab(text: 'Lab directory'),
             Tab(text: 'Health kits'),
             Tab(text: 'Medicines'),
+            Tab(text: 'Doctor info'),
           ],
         ),
       ),
@@ -62,6 +64,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen>
             _LabDirectoryTab(),
             _HealthKitsTab(),
             _MedicinesTab(),
+            _DoctorContactInfoTab(),
           ],
         ),
       ),
@@ -955,6 +958,187 @@ class _MedicineFormState extends ConsumerState<_MedicineForm> {
               child: AnimatedConfirmButton(
                 label: 'Add',
                 successLabel: 'Added',
+                onPressed: _save,
+                onSuccessComplete: () {
+                  if (mounted) Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Supplementary contact/availability info shown alongside a verified doctor's existing
+/// provider_directory card — lists every verified doctor (from the same source the patient
+/// "Find a doctor" tab uses) so the admin picks who to add info for, rather than typing a raw
+/// profile ID by hand.
+class _DoctorContactInfoTab extends ConsumerWidget {
+  const _DoctorContactInfoTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final doctorsAsync = ref.watch(verifiedDoctorsProvider);
+    final contactInfoAsync = ref.watch(adminDoctorContactInfoProvider);
+
+    return doctorsAsync.when(
+      data: (doctors) {
+        if (doctors.isEmpty) {
+          return const ActionableEmptyState(
+            icon: Icons.medical_information_outlined,
+            title: 'No verified doctors yet',
+            subtitle: 'Verify a doctor\'s credentials first — see provider_credentials.',
+          );
+        }
+        final contactByProviderId = {
+          for (final c in contactInfoAsync.valueOrNull ?? <DoctorContactInfo>[])
+            c.providerProfileId: c,
+        };
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: doctors.length,
+          itemBuilder: (context, index) {
+            final doctor = doctors[index];
+            final info = contactByProviderId[doctor.profileId];
+            return AnimatedListEntry(
+              index: index,
+              child: Card(
+                child: ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(doctor.fullName),
+                  subtitle: Text(
+                    info == null
+                        ? 'No contact info added'
+                        : [
+                            if (info.contactPhone != null) info.contactPhone!,
+                            if (info.availability != null) info.availability!,
+                          ].join(' · '),
+                  ),
+                  trailing: TextButton(
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) =>
+                          _DoctorContactInfoForm(doctorId: doctor.profileId, existing: info),
+                    ),
+                    child: Text(info == null ? 'Add' : 'Edit'),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 3)),
+      error: (e, _) => ErrorState(message: '$e'),
+    );
+  }
+}
+
+class _DoctorContactInfoForm extends ConsumerStatefulWidget {
+  final String doctorId;
+  final DoctorContactInfo? existing;
+  const _DoctorContactInfoForm({required this.doctorId, this.existing});
+
+  @override
+  ConsumerState<_DoctorContactInfoForm> createState() => _DoctorContactInfoFormState();
+}
+
+class _DoctorContactInfoFormState extends ConsumerState<_DoctorContactInfoForm> {
+  late final _phoneController = TextEditingController(text: widget.existing?.contactPhone ?? '');
+  late final _emailController = TextEditingController(text: widget.existing?.contactEmail ?? '');
+  late final _feeController = TextEditingController(text: widget.existing?.consultationFee ?? '');
+  late final _availabilityController =
+      TextEditingController(text: widget.existing?.availability ?? '');
+  late final _notesController = TextEditingController(text: widget.existing?.notes ?? '');
+
+  @override
+  void dispose() {
+    for (final c in [
+      _phoneController,
+      _emailController,
+      _feeController,
+      _availabilityController,
+      _notesController,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<bool> _save() async {
+    try {
+      await ref.read(servicesDirectoryServiceProvider).upsertDoctorContactInfo(
+            DoctorContactInfo(
+              id: widget.existing?.id ?? '',
+              providerProfileId: widget.doctorId,
+              contactPhone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+              contactEmail: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+              consultationFee: _feeController.text.trim().isEmpty ? null : _feeController.text.trim(),
+              availability:
+                  _availabilityController.text.trim().isEmpty ? null : _availabilityController.text.trim(),
+              notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+              published: true,
+            ),
+          );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. $e')));
+      }
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Doctor contact info', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _phoneController,
+              decoration: const InputDecoration(labelText: 'Contact phone'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'Contact email'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _feeController,
+              decoration: const InputDecoration(labelText: 'Consultation fee'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _availabilityController,
+              decoration: const InputDecoration(labelText: 'Availability (e.g. Mon-Fri, 10am-4pm)'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: AnimatedConfirmButton(
+                label: 'Save',
+                successLabel: 'Saved',
                 onPressed: _save,
                 onSuccessComplete: () {
                   if (mounted) Navigator.of(context).pop();

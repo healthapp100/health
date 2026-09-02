@@ -8,6 +8,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/state_widgets.dart';
 import '../../models/appointment.dart';
 import '../../models/enums.dart';
+import '../services/services_providers.dart';
 import 'book_appointment_sheet.dart';
 import 'care_providers.dart';
 
@@ -243,6 +244,8 @@ class _FindProviderTab extends ConsumerWidget {
                 itemCount: providers.length,
                 itemBuilder: (context, index) {
                   final provider = providers[index];
+                  final contactInfoAsync = ref.watch(doctorContactInfoProvider(provider.profileId));
+                  final contactInfo = contactInfoAsync.valueOrNull;
                   return Card(
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),
@@ -252,6 +255,9 @@ class _FindProviderTab extends ConsumerWidget {
                           if (provider.specialty != null) provider.specialty!,
                           if (provider.yearsExperience != null)
                             '${provider.yearsExperience} yrs experience',
+                          if (contactInfo?.availability != null) contactInfo!.availability!,
+                          if (contactInfo?.consultationFee != null)
+                            'Fee: ${contactInfo!.consultationFee}',
                         ].join(' · '),
                       ),
                       trailing: FilledButton(

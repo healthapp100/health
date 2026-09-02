@@ -23,3 +23,8 @@ final adminHealthKitsProvider = StreamProvider.autoDispose<List<HealthKitEntry>>
 final adminMedicinesProvider = StreamProvider.autoDispose<List<MedicineInfo>>((ref) {
   return ref.watch(servicesDirectoryServiceProvider).watchAllMedicinesForAdmin();
 });
+
+final adminDoctorContactInfoProvider =
+    StreamProvider.autoDispose<List<DoctorContactInfo>>((ref) {
+  return ref.watch(servicesDirectoryServiceProvider).watchAllDoctorContactInfoForAdmin();
+});

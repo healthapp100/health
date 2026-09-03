@@ -4,6 +4,11 @@ Written after a full pass extending Realtime, adding pagination, offline handlin
 session-expiration handling. This documents what's actually enforced today, not aspirational
 policy — every claim below is traceable to a migration file or a specific code path.
 
+**Migrations must be applied for these claims to hold in production.** Every fix described here
+(including 0017) lives in `supabase/migrations/*.sql` and only takes effect once run against the
+live Supabase project via the SQL Editor or `supabase db push` — this repo has no CI step that
+applies migrations automatically.
+
 ## 1. Row-Level Security — table-by-table audit
 
 Every table with patient data has RLS enabled (`enable row level security`) and every policy was
@@ -23,7 +28,11 @@ re-read for this doc. Summary:
 | `provider_directory` | authenticated read all | written only by a `security definer` trigger | The deliberate public-safe mirror of `provider_credentials`; patients never touch the underlying due-diligence table |
 | `health_articles` | public read (published only) | staff manage | `published_at is not null and published_at <= now()` — a staff-authored draft is invisible until publish, not just "hidden in the UI" |
 | `seminars` | public read all | staff manage | |
-| `seminar_registrations` | full CRUD own | staff read | |
+| `seminar_registrations` | full CRUD own | staff read | A patient's own-row RLS scope means a client-side `count` under this policy only ever returns 0 or 1, never the seminar's true registration total — fixed in 0017 via a `security definer` RPC (`seminar_registration_count`) that returns just the count, never row contents |
+| `monitoring_messages` | own targeted + broadcast, **logged-in only** (0017) | staff manage | The original policy (`patient_id is null or patient_id = auth.uid()`) had no `auth.uid() is not null` guard, so an anonymous caller satisfied the `is null` branch and could read every broadcast message. Fixed in 0017. |
+| `daily_videos` | published + within `available_from`/`available_until` window | staff manage | |
+| `lab_directory` / `health_kit_directory` / `medicine_info` | public read (published only) | staff manage | Directory/reference content — deliberately public, consistent with BLUEPRINT.md §5.2's Guest role |
+| `doctor_contact_info` | **authenticated read only** (0017), published rows | staff manage | Originally `using (published)` with no auth check — a doctor's personal phone/email was fetchable by an anonymous request. Fixed in 0017 to require `auth.uid() is not null`. |
 | `consent_records` | self read/insert | admin read | Append-only in practice: no update/delete policy exists, matching DPDP's audit-trail intent |
 | `audit_log` | no access | admin read; writes only via service_role | End users cannot read or write this table at all |
 
@@ -32,6 +41,14 @@ row would need to be inserted by staff, but the RLS policy grants full CRUD to `
 auth.uid()` only; staff have read-only. If lab-sourced vitals become a real feature, add a
 `vitals: staff insert lab-sourced` policy scoped to `source = 'lab'` rather than widening patient
 access.
+
+**Full re-audit (0017):** every `select`/`insert`/`update`/`delete`/`all` policy across all 17
+migrations was re-read end to end for anonymous-caller behavior ahead of production launch. Write
+policies were all sound by construction (equality against `auth.uid()` or the `is_staff()`/
+`is_admin()` helpers naturally evaluates false for `auth.uid() = null`). Two real read-side gaps
+were found and fixed — see the `monitoring_messages` and `doctor_contact_info` rows above. The
+remaining public-read tables (articles, seminars, avatars, learn content, daily videos, lab/health
+kit/medicine directories) are intentional per BLUEPRINT.md §5.2, not gaps.
 
 ## 2. Realtime is a second gate, not a substitute for RLS
 
@@ -87,11 +104,12 @@ the offline banner; that's a real distinction the current implementation doesn't
 so the app already degrades to "stale but visible" rather than "blank" when connectivity drops —
 the banner explains that state rather than creating it.
 
-**Not built:** a write queue for offline mutations (logging a vital, canceling an appointment
-while offline). Those currently fail outright with a SnackBar error and must be retried manually
-once back online. A full offline-first sync queue (sqflite is already a dependency, unused) is a
-substantially larger effort than this pass — worth scoping separately if offline *writes* (not
-just offline *reads of cached data*) become a real requirement.
+**Partially built:** an offline write queue (sqflite, native only — no web implementation) now
+persists a vital logged with no signal and auto-replays it on reconnect, rather than failing
+outright. Every other mutation (canceling an appointment, sending a monitoring reply, admin
+content edits, etc.) is still not queued — those fail with a SnackBar error and must be retried
+manually once back online. Extending the same queue to other mutation types is worth scoping if
+offline writes beyond vitals become a real requirement.
 
 ## 6. What this document does not cover
 

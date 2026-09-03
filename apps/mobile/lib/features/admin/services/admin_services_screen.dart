@@ -10,6 +10,25 @@ import '../../../models/services_models.dart';
 import '../../care/care_providers.dart';
 import 'admin_services_providers.dart';
 
+/// Shared "are you sure?" gate for every delete button on this screen — none of the five
+/// sub-modules' delete actions originally had one (unlike Learn/Blogs/Seminars, which all
+/// confirm before deleting), so a single misclick permanently destroyed a monitoring message,
+/// video, or directory listing with no undo. Returns true only if the admin confirmed.
+Future<bool> _confirmDelete(BuildContext context, String itemLabel) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete?'),
+      content: Text('"$itemLabel" will be permanently deleted. This cannot be undone.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
 /// One admin screen with a tab per Services sub-module (Daily Monitoring, Daily Videos, Lab
 /// directory, Health Kit directory, Medicines) — each tab's form is short enough (a handful of
 /// fields) that a single consolidated screen stays easier to navigate than five separate admin
@@ -111,6 +130,7 @@ class _MonitoringMessagesTab extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () async {
+                            if (!await _confirmDelete(context, message.title)) return;
                             await ref
                                 .read(servicesDirectoryServiceProvider)
                                 .deleteMonitoringMessage(message.id);
@@ -298,6 +318,7 @@ class _DailyVideosTab extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () async {
+                            if (!await _confirmDelete(context, video.title)) return;
                             await ref.read(servicesDirectoryServiceProvider).deleteVideo(video.id);
                           },
                         ),
@@ -469,6 +490,7 @@ class _LabDirectoryTab extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () async {
+                            if (!await _confirmDelete(context, entry.name)) return;
                             await ref.read(servicesDirectoryServiceProvider).deleteLabEntry(entry.id);
                           },
                         ),
@@ -665,6 +687,7 @@ class _HealthKitsTab extends ConsumerWidget {
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
                       onPressed: () async {
+                        if (!await _confirmDelete(context, entry.name)) return;
                         await ref.read(servicesDirectoryServiceProvider).deleteHealthKit(entry.id);
                       },
                     ),
@@ -842,6 +865,7 @@ class _MedicinesTab extends ConsumerWidget {
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
                       onPressed: () async {
+                        if (!await _confirmDelete(context, medicine.name)) return;
                         await ref.read(servicesDirectoryServiceProvider).deleteMedicine(medicine.id);
                       },
                     ),

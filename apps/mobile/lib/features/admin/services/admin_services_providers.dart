@@ -26,5 +26,5 @@ final adminMedicinesProvider = StreamProvider.autoDispose<List<MedicineInfo>>((r
 
 final adminDoctorContactInfoProvider =
     StreamProvider.autoDispose<List<DoctorContactInfo>>((ref) {
-  return ref.watch(servicesDirectoryServiceProvider).watchAllDoctorContactInfoForAdmin();
+  return ref.watch(servicesDirectoryServiceProvider).watchAllDoctorContactInfo();
 });

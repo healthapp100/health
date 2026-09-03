@@ -183,18 +183,13 @@ class ServicesDirectoryService {
 
   // ---- Doctor contact info ----
 
-  Future<DoctorContactInfo?> getDoctorContactInfo(String providerProfileId) async {
-    final rows = await _client
-        .from('doctor_contact_info')
-        .select()
-        .eq('provider_profile_id', providerProfileId)
-        .eq('published', true)
-        .limit(1);
-    final list = rows as List<dynamic>;
-    return list.isEmpty ? null : DoctorContactInfo.fromJson(list.first as Map<String, dynamic>);
-  }
-
-  Stream<List<DoctorContactInfo>> watchAllDoctorContactInfoForAdmin() {
+  /// RLS-safe for any authenticated caller, not just staff: a patient sees only
+  /// `published = true` rows (the "authenticated read published" policy), while staff also see
+  /// drafts via the separate "staff manage" policy — so this one stream backs both the admin
+  /// authoring list AND the patient-facing Care screen's provider cards, avoiding an N+1 query
+  /// per doctor (one query per row in the provider list) that a `.family`-per-provider fetch
+  /// would cause.
+  Stream<List<DoctorContactInfo>> watchAllDoctorContactInfo() {
     return _client
         .from('doctor_contact_info')
         .stream(primaryKey: ['id'])

@@ -23,7 +23,12 @@ final medicineInfoProvider = StreamProvider.autoDispose<List<MedicineInfo>>((ref
   return ref.watch(servicesDirectoryServiceProvider).watchPublishedMedicines();
 });
 
-final doctorContactInfoProvider =
-    FutureProvider.autoDispose.family<DoctorContactInfo?, String>((ref, providerProfileId) {
-  return ref.watch(servicesDirectoryServiceProvider).getDoctorContactInfo(providerProfileId);
+/// One shared subscription for every doctor's contact info, keyed into a map — used by Care's
+/// provider list so displaying N providers costs one query, not N (see
+/// ServicesDirectoryService.watchAllDoctorContactInfo's doc comment for why this single stream
+/// is RLS-safe for a plain patient too, not just admin).
+final allDoctorContactInfoProvider = StreamProvider.autoDispose<Map<String, DoctorContactInfo>>((ref) {
+  return ref.watch(servicesDirectoryServiceProvider).watchAllDoctorContactInfo().map(
+        (list) => {for (final info in list) info.providerProfileId: info},
+      );
 });

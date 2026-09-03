@@ -230,6 +230,9 @@ class _FindProviderTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final providersAsync =
         role == 'doctor' ? ref.watch(verifiedDoctorsProvider) : ref.watch(verifiedNutritionistsProvider);
+    // One shared subscription for every provider's contact info, not one query per row —
+    // avoids an N+1 query pattern as the verified-provider list grows.
+    final contactInfoByProvider = ref.watch(allDoctorContactInfoProvider).valueOrNull ?? const {};
 
     return ResponsiveContent(
       child: providersAsync.when(
@@ -244,8 +247,7 @@ class _FindProviderTab extends ConsumerWidget {
                 itemCount: providers.length,
                 itemBuilder: (context, index) {
                   final provider = providers[index];
-                  final contactInfoAsync = ref.watch(doctorContactInfoProvider(provider.profileId));
-                  final contactInfo = contactInfoAsync.valueOrNull;
+                  final contactInfo = contactInfoByProvider[provider.profileId];
                   return Card(
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),

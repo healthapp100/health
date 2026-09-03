@@ -166,12 +166,16 @@ class ContentService {
         .eq('patient_id', patientId);
   }
 
+  /// A plain `.select()` count is unusable here: RLS scopes a patient's own view of
+  /// `seminar_registrations` to just their own row, so a patient-side count is always 0 or 1,
+  /// never the true total — the `security definer` RPC (0017) bypasses that row filtering for
+  /// exactly this one narrow purpose (a count, never the registrant list).
   Future<int> getRegistrationCount(String seminarId) async {
-    final rows = await _client
-        .from('seminar_registrations')
-        .select('id')
-        .eq('seminar_id', seminarId);
-    return (rows as List<dynamic>).length;
+    final result = await _client.rpc(
+      'seminar_registration_count',
+      params: {'p_seminar_id': seminarId},
+    );
+    return (result as num).toInt();
   }
 
   // ---- Admin: seminar authoring ----

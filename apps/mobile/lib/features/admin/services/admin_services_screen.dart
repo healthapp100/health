@@ -496,6 +496,11 @@ class _LabDirectoryTab extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    onTap: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => _LabDirectoryForm(existing: entry),
+                    ),
                   ),
                 ),
               );
@@ -510,22 +515,24 @@ class _LabDirectoryTab extends ConsumerWidget {
 }
 
 class _LabDirectoryForm extends ConsumerStatefulWidget {
-  const _LabDirectoryForm();
+  final LabDirectoryEntry? existing;
+  const _LabDirectoryForm({this.existing});
 
   @override
   ConsumerState<_LabDirectoryForm> createState() => _LabDirectoryFormState();
 }
 
 class _LabDirectoryFormState extends ConsumerState<_LabDirectoryForm> {
-  final _nameController = TextEditingController();
-  final _doctorController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _servicesController = TextEditingController();
-  final _timingsController = TextEditingController();
-  final _linkController = TextEditingController();
-  String _kind = 'diagnostic_center';
+  late final _nameController = TextEditingController(text: widget.existing?.name ?? '');
+  late final _doctorController = TextEditingController(text: widget.existing?.doctorName ?? '');
+  late final _phoneController = TextEditingController(text: widget.existing?.contactPhone ?? '');
+  late final _emailController = TextEditingController(text: widget.existing?.contactEmail ?? '');
+  late final _addressController = TextEditingController(text: widget.existing?.address ?? '');
+  late final _servicesController = TextEditingController(text: widget.existing?.services ?? '');
+  late final _timingsController = TextEditingController(text: widget.existing?.timings ?? '');
+  late final _linkController = TextEditingController(text: widget.existing?.externalLink ?? '');
+  late String _kind = widget.existing?.kind ?? 'diagnostic_center';
+  late bool _published = widget.existing?.published ?? true;
 
   @override
   void dispose() {
@@ -548,21 +555,25 @@ class _LabDirectoryFormState extends ConsumerState<_LabDirectoryForm> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return false;
     try {
-      await ref.read(servicesDirectoryServiceProvider).createLabEntry(
-            LabDirectoryEntry(
-              id: '',
-              name: name,
-              kind: _kind,
-              doctorName: _doctorController.text.trim().isEmpty ? null : _doctorController.text.trim(),
-              contactPhone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-              contactEmail: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
-              address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-              services: _servicesController.text.trim().isEmpty ? null : _servicesController.text.trim(),
-              timings: _timingsController.text.trim().isEmpty ? null : _timingsController.text.trim(),
-              externalLink: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
-              published: true,
-            ),
-          );
+      final draft = LabDirectoryEntry(
+        id: widget.existing?.id ?? '',
+        name: name,
+        kind: _kind,
+        doctorName: _doctorController.text.trim().isEmpty ? null : _doctorController.text.trim(),
+        contactPhone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        contactEmail: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+        address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        services: _servicesController.text.trim().isEmpty ? null : _servicesController.text.trim(),
+        timings: _timingsController.text.trim().isEmpty ? null : _timingsController.text.trim(),
+        externalLink: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
+        published: _published,
+      );
+      final service = ref.read(servicesDirectoryServiceProvider);
+      if (widget.existing == null) {
+        await service.createLabEntry(draft);
+      } else {
+        await service.updateLabEntry(widget.existing!.id, draft);
+      }
       return true;
     } catch (e) {
       if (mounted) {
@@ -586,7 +597,10 @@ class _LabDirectoryFormState extends ConsumerState<_LabDirectoryForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add lab listing', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.existing == null ? 'Add lab listing' : 'Edit lab listing',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
             TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
             const SizedBox(height: 12),
@@ -633,12 +647,19 @@ class _LabDirectoryFormState extends ConsumerState<_LabDirectoryForm> {
               controller: _linkController,
               decoration: const InputDecoration(labelText: 'External link (optional)'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Published'),
+              value: _published,
+              onChanged: (v) => setState(() => _published = v),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: AnimatedConfirmButton(
-                label: 'Add',
-                successLabel: 'Added',
+                label: widget.existing == null ? 'Add' : 'Save changes',
+                successLabel: 'Saved',
                 onPressed: _save,
                 onSuccessComplete: () {
                   if (mounted) Navigator.of(context).pop();
@@ -691,6 +712,11 @@ class _HealthKitsTab extends ConsumerWidget {
                         await ref.read(servicesDirectoryServiceProvider).deleteHealthKit(entry.id);
                       },
                     ),
+                    onTap: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => _HealthKitForm(existing: entry),
+                    ),
                   ),
                 ),
               );
@@ -705,19 +731,23 @@ class _HealthKitsTab extends ConsumerWidget {
 }
 
 class _HealthKitForm extends ConsumerStatefulWidget {
-  const _HealthKitForm();
+  final HealthKitEntry? existing;
+  const _HealthKitForm({this.existing});
 
   @override
   ConsumerState<_HealthKitForm> createState() => _HealthKitFormState();
 }
 
 class _HealthKitFormState extends ConsumerState<_HealthKitForm> {
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _supplierController = TextEditingController();
-  final _purchaseLinkController = TextEditingController();
-  final _instructionsController = TextEditingController();
-  String _category = 'device';
+  late final _nameController = TextEditingController(text: widget.existing?.name ?? '');
+  late final _descriptionController = TextEditingController(text: widget.existing?.description ?? '');
+  late final _supplierController = TextEditingController(text: widget.existing?.supplierName ?? '');
+  late final _purchaseLinkController =
+      TextEditingController(text: widget.existing?.purchaseLink ?? '');
+  late final _instructionsController =
+      TextEditingController(text: widget.existing?.instructions ?? '');
+  late String _category = widget.existing?.category ?? 'device';
+  late bool _published = widget.existing?.published ?? true;
 
   @override
   void dispose() {
@@ -737,22 +767,26 @@ class _HealthKitFormState extends ConsumerState<_HealthKitForm> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return false;
     try {
-      await ref.read(servicesDirectoryServiceProvider).createHealthKit(
-            HealthKitEntry(
-              id: '',
-              name: name,
-              category: _category,
-              description:
-                  _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-              supplierName:
-                  _supplierController.text.trim().isEmpty ? null : _supplierController.text.trim(),
-              purchaseLink:
-                  _purchaseLinkController.text.trim().isEmpty ? null : _purchaseLinkController.text.trim(),
-              instructions:
-                  _instructionsController.text.trim().isEmpty ? null : _instructionsController.text.trim(),
-              published: true,
-            ),
-          );
+      final draft = HealthKitEntry(
+        id: widget.existing?.id ?? '',
+        name: name,
+        category: _category,
+        description:
+            _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        supplierName:
+            _supplierController.text.trim().isEmpty ? null : _supplierController.text.trim(),
+        purchaseLink:
+            _purchaseLinkController.text.trim().isEmpty ? null : _purchaseLinkController.text.trim(),
+        instructions:
+            _instructionsController.text.trim().isEmpty ? null : _instructionsController.text.trim(),
+        published: _published,
+      );
+      final service = ref.read(servicesDirectoryServiceProvider);
+      if (widget.existing == null) {
+        await service.createHealthKit(draft);
+      } else {
+        await service.updateHealthKit(widget.existing!.id, draft);
+      }
       return true;
     } catch (e) {
       if (mounted) {
@@ -776,7 +810,10 @@ class _HealthKitFormState extends ConsumerState<_HealthKitForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add health kit item', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.existing == null ? 'Add health kit item' : 'Edit health kit item',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
             TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
             const SizedBox(height: 12),
@@ -811,12 +848,19 @@ class _HealthKitFormState extends ConsumerState<_HealthKitForm> {
               maxLines: 3,
               decoration: const InputDecoration(labelText: 'Instructions'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Published'),
+              value: _published,
+              onChanged: (v) => setState(() => _published = v),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: AnimatedConfirmButton(
-                label: 'Add',
-                successLabel: 'Added',
+                label: widget.existing == null ? 'Add' : 'Save changes',
+                successLabel: 'Saved',
                 onPressed: _save,
                 onSuccessComplete: () {
                   if (mounted) Navigator.of(context).pop();
@@ -869,6 +913,11 @@ class _MedicinesTab extends ConsumerWidget {
                         await ref.read(servicesDirectoryServiceProvider).deleteMedicine(medicine.id);
                       },
                     ),
+                    onTap: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => _MedicineForm(existing: medicine),
+                    ),
                   ),
                 ),
               );
@@ -883,18 +932,21 @@ class _MedicinesTab extends ConsumerWidget {
 }
 
 class _MedicineForm extends ConsumerStatefulWidget {
-  const _MedicineForm();
+  final MedicineInfo? existing;
+  const _MedicineForm({this.existing});
 
   @override
   ConsumerState<_MedicineForm> createState() => _MedicineFormState();
 }
 
 class _MedicineFormState extends ConsumerState<_MedicineForm> {
-  final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _recommendationsController = TextEditingController();
-  final _linkController = TextEditingController();
+  late final _nameController = TextEditingController(text: widget.existing?.name ?? '');
+  late final _categoryController = TextEditingController(text: widget.existing?.category ?? '');
+  late final _descriptionController = TextEditingController(text: widget.existing?.description ?? '');
+  late final _recommendationsController =
+      TextEditingController(text: widget.existing?.recommendations ?? '');
+  late final _linkController = TextEditingController(text: widget.existing?.externalLink ?? '');
+  late bool _published = widget.existing?.published ?? true;
 
   @override
   void dispose() {
@@ -914,20 +966,24 @@ class _MedicineFormState extends ConsumerState<_MedicineForm> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return false;
     try {
-      await ref.read(servicesDirectoryServiceProvider).createMedicine(
-            MedicineInfo(
-              id: '',
-              name: name,
-              category: _categoryController.text.trim().isEmpty ? null : _categoryController.text.trim(),
-              description:
-                  _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-              recommendations: _recommendationsController.text.trim().isEmpty
-                  ? null
-                  : _recommendationsController.text.trim(),
-              externalLink: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
-              published: true,
-            ),
-          );
+      final draft = MedicineInfo(
+        id: widget.existing?.id ?? '',
+        name: name,
+        category: _categoryController.text.trim().isEmpty ? null : _categoryController.text.trim(),
+        description:
+            _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        recommendations: _recommendationsController.text.trim().isEmpty
+            ? null
+            : _recommendationsController.text.trim(),
+        externalLink: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
+        published: _published,
+      );
+      final service = ref.read(servicesDirectoryServiceProvider);
+      if (widget.existing == null) {
+        await service.createMedicine(draft);
+      } else {
+        await service.updateMedicine(widget.existing!.id, draft);
+      }
       return true;
     } catch (e) {
       if (mounted) {
@@ -951,7 +1007,10 @@ class _MedicineFormState extends ConsumerState<_MedicineForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add medicine info', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              widget.existing == null ? 'Add medicine info' : 'Edit medicine info',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
             TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
             const SizedBox(height: 12),
@@ -976,12 +1035,19 @@ class _MedicineFormState extends ConsumerState<_MedicineForm> {
               controller: _linkController,
               decoration: const InputDecoration(labelText: 'External link (optional)'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Published'),
+              value: _published,
+              onChanged: (v) => setState(() => _published = v),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: AnimatedConfirmButton(
-                label: 'Add',
-                successLabel: 'Added',
+                label: widget.existing == null ? 'Add' : 'Save changes',
+                successLabel: 'Saved',
                 onPressed: _save,
                 onSuccessComplete: () {
                   if (mounted) Navigator.of(context).pop();

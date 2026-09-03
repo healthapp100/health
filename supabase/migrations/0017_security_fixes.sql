@@ -38,3 +38,9 @@ $$;
 -- same "authenticated, not anonymous" bar applied above.
 revoke all on function public.seminar_registration_count(uuid) from public;
 grant execute on function public.seminar_registration_count(uuid) to authenticated;
+
+-- 4. seminars list used a per-row `isRegistered` query (N+1: one query per seminar shown).
+--    Replaced with one Realtime subscription to the patient's own registrations, which needs
+--    this table in the publication (same gotcha hit twice before at 0008 and 0011 — RLS and
+--    Realtime are independently configured).
+alter publication supabase_realtime add table public.seminar_registrations;

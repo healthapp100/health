@@ -178,14 +178,18 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with SingleTickerProv
 
   Widget _buildSeminarsTab() {
     final seminarsAsync = ref.watch(upcomingSeminarsProvider);
+    // One shared subscription for every registration, not one query per seminar row.
+    final registeredIds = ref.watch(ownRegisteredSeminarIdsProvider).valueOrNull ?? const {};
     return seminarsAsync.when(
       data: (seminars) => AsyncListView<Seminar>(
         data: seminars,
         error: null,
         isLoading: false,
         emptyTitle: 'No upcoming seminars',
-        itemBuilder: (context, seminar, index) =>
-            AnimatedListEntry(index: index, child: _SeminarTile(seminar: seminar)),
+        itemBuilder: (context, seminar, index) => AnimatedListEntry(
+          index: index,
+          child: _SeminarTile(seminar: seminar, isRegistered: registeredIds.contains(seminar.id)),
+        ),
       ),
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
@@ -510,14 +514,31 @@ class _AllTopicsSheet extends StatelessWidget {
   }
 }
 
+Future<bool> _confirmCancelRegistration(BuildContext context, String seminarTitle) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Cancel registration?'),
+      content: Text('You\'ll lose your spot for "$seminarTitle".'),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep it')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Cancel registration'),
+        ),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
 class _SeminarTile extends ConsumerWidget {
   final Seminar seminar;
-  const _SeminarTile({required this.seminar});
+  final bool isRegistered;
+  const _SeminarTile({required this.seminar, required this.isRegistered});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final registeredAsync = ref.watch(seminarRegisteredProvider(seminar.id));
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
@@ -530,48 +551,39 @@ class _SeminarTile extends ConsumerWidget {
             seminar.isOnline ? 'Online' : (seminar.venue ?? 'Offline'),
           ].join(' · '),
         ),
-        trailing: registeredAsync.when(
-          data: (isRegistered) => isRegistered
-              ? OutlinedButton(
-                  onPressed: () async {
-                    await ref.read(contentServiceProvider).cancelRegistration(seminar.id);
-                    ref.invalidate(seminarRegisteredProvider(seminar.id));
+        trailing: isRegistered
+            ? OutlinedButton(
+                onPressed: () async {
+                  if (!await _confirmCancelRegistration(context, seminar.title)) return;
+                  await ref.read(contentServiceProvider).cancelRegistration(seminar.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Registration cancelled')));
+                  }
+                },
+                child: const Text('Registered'),
+              )
+            : FilledButton(
+                onPressed: () async {
+                  try {
+                    await ref.read(contentServiceProvider).registerForSeminar(
+                          seminar.id,
+                          registrationLimit: seminar.registrationLimit,
+                        );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Registered — we’ll remind you')),
+                      );
+                    }
+                  } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(content: Text('Registration cancelled')));
+                          .showSnackBar(SnackBar(content: Text('Could not register. $e')));
                     }
-                  },
-                  child: const Text('Registered'),
-                )
-              : FilledButton(
-                  onPressed: () async {
-                    try {
-                      await ref.read(contentServiceProvider).registerForSeminar(
-                            seminar.id,
-                            registrationLimit: seminar.registrationLimit,
-                          );
-                      ref.invalidate(seminarRegisteredProvider(seminar.id));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Registered — we’ll remind you')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text('Could not register. $e')));
-                      }
-                    }
-                  },
-                  child: const Text('Register'),
-                ),
-          loading: () => const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          error: (e, _) => const SizedBox.shrink(),
-        ),
+                  }
+                },
+                child: const Text('Register'),
+              ),
       ),
     );
   }

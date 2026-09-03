@@ -50,7 +50,8 @@ final pastSeminarsProvider = Provider.autoDispose<AsyncValue<List<Seminar>>>((re
       );
 });
 
-final seminarRegisteredProvider =
-    FutureProvider.autoDispose.family<bool, String>((ref, seminarId) {
-  return ref.watch(contentServiceProvider).isRegistered(seminarId);
+/// One shared subscription for every seminar the current patient is registered to — avoids an
+/// N+1 query pattern in the seminars list (one `isRegistered` call per row).
+final ownRegisteredSeminarIdsProvider = StreamProvider.autoDispose<Set<String>>((ref) {
+  return ref.watch(contentServiceProvider).watchOwnRegisteredSeminarIds();
 });

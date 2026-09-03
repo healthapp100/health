@@ -146,15 +146,15 @@ class ContentService {
     });
   }
 
-  Future<bool> isRegistered(String seminarId) async {
-    final patientId = _client.auth.currentUser!.id;
-    final rows = await _client
+  /// RLS already scopes a patient's `select` on `seminar_registrations` to just their own rows,
+  /// so one subscription returns exactly the set of seminars they've registered for — used to
+  /// back every row of the seminars list with a single query instead of one per-seminar
+  /// registration-status query (the N+1 pattern the old per-seminar `.family` provider caused).
+  Stream<Set<String>> watchOwnRegisteredSeminarIds() {
+    return _client
         .from('seminar_registrations')
-        .select('id')
-        .eq('seminar_id', seminarId)
-        .eq('patient_id', patientId)
-        .limit(1);
-    return (rows as List<dynamic>).isNotEmpty;
+        .stream(primaryKey: ['id'])
+        .map((rows) => rows.map((r) => r['seminar_id'] as String).toSet());
   }
 
   Future<void> cancelRegistration(String seminarId) async {
